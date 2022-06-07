@@ -6,11 +6,12 @@ qsn = True  # @param ["True", "False"] {type:"raw"}
 real = False  # @param ["True", "False"] {type:"raw"}
 soup = True  # @param ["True", "False"] {type:"raw"}
 share_net_real = True  # @param ["True", "False"] {type:"raw"}
-last_layer_gen_real = True  # @param ["True", "False"] {type:"raw"}
-experiment_name = "parcollet_nuoovo"  # @param {type:"string"}
+last_layer_gen_real = False  # @param ["True", "False"] {type:"raw"}
+experiment_name = "test_local"  # @param {type:"string"}
 mode = "train"  # @param ["train", "eval","sample"]
-sepoch = 50  # @param {type:"integer"}
-gpu_num = 0
+sepoch = 0  # @param {type:"integer"}
+gpu_num = -1
+
 args = munch.Munch({
     "mode": mode,
     "experiment_name": experiment_name,
@@ -21,10 +22,10 @@ args = munch.Munch({
     "val_img_dir": "datasets/chaos2019/test",
     "eval_dir": "eval",
     "checkpoint_dir": "pretrained_weights/checkpoints/MICCAI2021/",
-    "batch_size": 1,
-    "eval_batch_size": 1,
+    "batch_size": 4,
+    "eval_batch_size": 4,
     "gan_version": "Generator[2/3]+shapeunet+D",
-    "image_size": 16,  # 256
+    "image_size": 128,  # 256
     "epoch": 50,
     "sepoch": sepoch,
     "modals": ('t1', 't2', 'ct'),
@@ -34,7 +35,7 @@ args = munch.Munch({
     "note": "affine:True;",
     "random_seed": 888,
     "log_every": 10,
-    "print_every": 100,
+    "print_every": 10,
     "save_every": 25,
     "c_dim": 3,
     "h_conv": 16,
@@ -57,5 +58,4 @@ args = munch.Munch({
     "seed": 888,
     "gpu_num": gpu_num
 })
-
-device = torch.device('cuda:' + str(args.gpu_num) if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:' + str(args.gpu_num) if args.gpu_num > -1 else 'cpu')

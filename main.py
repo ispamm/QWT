@@ -25,7 +25,7 @@ def set_deterministic(seed=42):
 
 if __name__ == '__main__':
     set_deterministic(args.seed)
-
+    print(args)
     if args.mode == "train":
         train(args)
     if args.mode == "sample":

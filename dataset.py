@@ -3,15 +3,21 @@ mask[256，256]
 Liver: 63 (55<<<70)
 """
 import os
+
+from PIL import Image
 from tqdm import tqdm
 import numpy as np
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 import shutil
 import SimpleITK as sitk
 import cv2
 import pydicom
 import torch
 import random
+from torchvision import transforms
+
+from config import args
+from utils import listdir
 
 
 class ChaosDataset_Syn_new(Dataset):
@@ -276,6 +282,83 @@ def raw_preprocess(data, get_s=False):
         return out, share_mask
     return out
 
+
+class MyDataset(Dataset):
+    def __init__(self, image_paths, transform=None):
+        self.image_paths = listdir(image_paths)
+        # height, width = 299, 299
+        # mean = [0.485, 0.456, 0.406]
+        # std = [0.229, 0.224, 0.225]
+        # #self.transform = transform
+        self.transform = transforms.Compose([
+            transforms.Resize([args.image_size, args.image_size]),
+            # transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            # transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+        ])
+
+    def __getitem__(self, index):
+        image_path = self.image_paths[index]
+        x = Image.open(image_path)
+        if self.transform is not None:
+            x = self.transform(x)
+        # x = cv2.resize(x, (128, 128), interpolation=cv2.INTER_LINEAR)
+
+        #  scale to [-1,1]
+        x = (x - 0.5) / 0.5
+        return x
+
+    def __len__(self):
+        return len(self.image_paths)
+
+
+class DefaultDataset(Dataset):
+    def __init__(self, root, transform=None):
+        self.samples = listdir(root)
+        self.samples.sort()
+        self.transform = transform
+        self.targets = None
+
+    def __getitem__(self, index):
+        fname = self.samples[index]
+        img = Image.open(fname).convert('RGB')
+        if self.transform is not None:
+            img = self.transform(img)
+        return img
+
+    def __len__(self):
+        return len(self.samples)
+
+
+def get_eval_loader(root, img_size=256, batch_size=32,
+                    imagenet_normalize=True, shuffle=True,
+                    num_workers=4, drop_last=False):
+    print('Preparing DataLoader for the evaluation phase...')
+    if imagenet_normalize:
+        height, width = 299, 299
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+    else:
+        height, width = img_size, img_size
+        mean = [0.5, 0.5, 0.5]
+        std = [0.5, 0.5, 0.5]
+
+    transform = transforms.Compose([
+        transforms.Resize([img_size, img_size]),
+        transforms.Resize([height, width]),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=mean, std=std)
+    ])
+
+    dataset = DefaultDataset(root, transform=transform)
+    return DataLoader(dataset=dataset,
+                      batch_size=batch_size,
+                      shuffle=shuffle,
+                      num_workers=num_workers,
+                      pin_memory=True,
+                      drop_last=drop_last,
+                      collate_fn=None
+                      )
 
 def make_dataset_consistent(mr_dir="/content/drive/MyDrive/Thesis/Datasets/chaos2019/train/MR/",
                             t1_t2_dir="/content/drive/MyDrive/Thesis/Datasets/chaos2019/train/"):

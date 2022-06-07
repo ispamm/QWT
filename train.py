@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+import datetime
 
 import munch
 import torch
@@ -33,7 +33,7 @@ def convert_data_for_quaternion_tarGAN(batch):
         t_img.append(torch.cat([_t_img, grayscale(_t_img)], 0))
         shape_mask.append(batch[i][2])
         mask.append(batch[i][3])
-        label_org.append(batch[i][4])
+        label_org.append(batch[i][4].to(dtype=torch.int32))
 
     return torch.stack(x_real), \
            torch.stack(t_img), \
@@ -77,14 +77,14 @@ def train(args):
     if args.sepoch > 0:
         load_nets(nets)
 
-
     start_time = time.time()
     print('start training...')
     ii = 0  # 22127 #25 epoch =
     with wandb.init(config=args, project="quattargan") as run:
         wandb.run.name = args.experiment_name
         for i in tqdm(range(args.sepoch, args.epoch), initial=args.sepoch, total=args.epoch):
-            for epoch, (x_real, t_img, shape_mask, mask, label_org) in tqdm(enumerate(syn_loader), total=len(syn_loader),
+            for epoch, (x_real, t_img, shape_mask, mask, label_org) in tqdm(enumerate(syn_loader),
+                                                                            total=len(syn_loader),
                                                                             desc="epoch {}".format(i)):
                 # 1. Preprocess input data
                 # Generate target domain labels randomly.
@@ -119,7 +119,8 @@ def train(args):
                     # print("out x fake t fake", x_fake.shape,t_fake.shape)
                 out_src, out_f_cls = nets.netD_i(x_fake.detach())
                 d_loss_fake = torch.mean(out_src)
-                d_loss_f_cls = F.binary_cross_entropy_with_logits(out_f_cls, d_false_org, reduction='sum') / out_f_cls.size(
+                d_loss_f_cls = F.binary_cross_entropy_with_logits(out_f_cls, d_false_org,
+                                                                  reduction='sum') / out_f_cls.size(
                     0)
 
                 # Compute loss for gradient penalty.
@@ -230,7 +231,7 @@ def train(args):
 
             if (i + 1) % 1 == 0 and (i + 1) > 0:
                 # if (epoch + 0) % args.print_every == 0:
-                x_concat = plot_images(nets.netG_use, i)
+                x_concat = plot_images(nets.netG_use, i, syneval_dataset, syneval_dataset2, syneval_dataset3)
                 wandb.log({"sample_dir": wandb.Image(x_concat, caption="epoch " + str(i))}, commit=False)
                 del x_concat
 
@@ -269,7 +270,8 @@ def build_model():
     else:
         disc_c_dim = args.c_dim * 2
     channels = 4 if (not args.real and not args.soup) else 1
-    netG = Generator(channels + args.c_dim, args.G_conv, 2, 3, True, True).to(device)
+    netG = Generator(in_c=channels + args.c_dim, mid_c=args.G_conv, layers=2, s_layers=3, affine=True, last_ac=True).to(
+        device)
     netH = ShapeUNet(img_ch=4 if not args.real and not args.last_layer_gen_real else 1, mid=args.h_conv,
                      output_ch=4 if not args.real and not args.last_layer_gen_real else 1).to(device)
 

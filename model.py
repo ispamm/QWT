@@ -1,11 +1,13 @@
 import json
 
+import numpy as np
 import torch
 import torchvision
 from munch import Munch
 from torch import nn
 from QGAN.utils.quaternion_layers import QuaternionConv, QuaternionTransposeConv
 from config import args
+import torch.nn.functional as F
 
 
 class QuaternionInstanceNorm2d(nn.Module):
@@ -281,6 +283,7 @@ class Discriminator(nn.Module):
 
     def __init__(self, image_size=256, conv_dim=64, c_dim=5, repeat_num=6):
         super(Discriminator, self).__init__()
+        print(args.real)
         layers = []
         if args.phm and not args.last_layer_gen_real:
             layers.append(PHMConv(4, 4, conv_dim, kernel_size=4, stride=2, padding=1))
@@ -316,8 +319,8 @@ class Discriminator(nn.Module):
         elif args.qsn:
             # self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
             # self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
-            self.conv1 = QuaternionConv(curr_dim, 4, kernel_size=3, stride=1, padding=1, bias=False)
-            self.conv2 = QuaternionConv(curr_dim, c_dim, kernel_size=kernel_size, stride=1, bias=False)
+            self.conv1 = QuaternionConv(in_channels=curr_dim, out_channels=4, kernel_size=3, stride=1, padding=1, bias=False)
+            self.conv2 = QuaternionConv(in_channels=curr_dim, out_channels=c_dim, kernel_size=kernel_size, stride=1, bias=False)
         elif args.real:
             self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
             self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)

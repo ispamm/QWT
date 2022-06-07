@@ -1,9 +1,16 @@
+import json
 import os
 import random
+from itertools import chain
+from pathlib import Path
 
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+import wandb
+import torchvision.utils as vutils
+
+from config import args, device
 
 
 def loss_filter(mask, device="cuda"):
@@ -104,7 +111,7 @@ def listdir(dname):
     return fnames
 
 
-def plot_images(netG_use, i):
+def plot_images(netG_use, i, syneval_dataset, syneval_dataset2, syneval_dataset3):
     fig = plt.figure(dpi=120)
     with torch.no_grad():
         index = random.choice([0, 1, 2])
