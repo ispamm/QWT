@@ -49,8 +49,8 @@ def train(args):
     if args.mode == "train":
         syn_dataset = ChaosDataset_Syn_new(path=args.dataset_path, split='train', modals=args.modals,
                                            image_size=args.image_size)
-        syn_loader = DataLoader(syn_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=None if (
-                args.real or (not args.real and args.soup)) else convert_data_for_quaternion_tarGAN)
+        syn_loader = DataLoader(syn_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=None )#if (
+                # args.real or (not args.real and args.soup)) else convert_data_for_quaternion_tarGAN)
     ### eval during training
     syneval_dataset = ChaosDataset_Syn_Test(path=args.dataset_path, modal=args.modals[0], gan=True,
                                             image_size=args.image_size)
@@ -62,8 +62,8 @@ def train(args):
     syneval_dataset4 = ChaosDataset_Syn_new(path=args.dataset_path, split='test', modals=args.modals,
                                             image_size=args.image_size)
     syneval_loader = DataLoader(syneval_dataset4, batch_size=args.batch_size,
-                                shuffle=True if args.mode != "sample" else False, collate_fn=None if (
-                args.real or (not args.real and args.soup)) else convert_data_for_quaternion_tarGAN)
+                                shuffle=True if args.mode != "sample" else False, collate_fn=None )#if (
+                # args.real or (not args.real and args.soup)) else convert_data_for_quaternion_tarGAN)
 
     nets, disc_c_dim = build_model()
     optims = build_optims(nets, glr, dlr)
@@ -92,9 +92,9 @@ def train(args):
                 label_trg = label_org[rand_idx]
                 c_org = label2onehot(label_org, args.c_dim)
                 c_trg = label2onehot(label_trg, args.c_dim)
-                d_false_org = label2onehot(label_org + args.c_dim, disc_c_dim)
-                d_org = label2onehot(label_org, disc_c_dim)
-                g_trg = label2onehot(label_trg, disc_c_dim)
+                d_false_org = label2onehot(label_org + args.c_dim, disc_c_dim-2)
+                d_org = label2onehot(label_org, disc_c_dim-2)
+                g_trg = label2onehot(label_trg, disc_c_dim-2)
                 x_real = x_real.to(device)  # Input images.
                 c_org = c_org.to(device)  # Original domain labels.
                 c_trg = c_trg.to(device)  # Target area domain labels y.
@@ -111,6 +111,8 @@ def train(args):
                 # print("out src out cls ",out_src.shape,out_cls.shape)
                 # print("out src",out_src.shape,out_cls.shape)
                 d_loss_real = -torch.mean(out_src)
+                if out_cls.size(1) != d_org.size(1):
+                    out_cls = out_cls[:,:d_org.size(1)]
                 d_loss_cls = F.binary_cross_entropy_with_logits(out_cls, d_org, reduction='sum') / out_cls.size(0)
                 # Compute loss with fake whole images.
                 with torch.no_grad():
@@ -119,13 +121,18 @@ def train(args):
                     # print("out x fake t fake", x_fake.shape,t_fake.shape)
                 out_src, out_f_cls = nets.netD_i(x_fake.detach())
                 d_loss_fake = torch.mean(out_src)
+
+                # wavelet
+                #out_f_cls = torch.cat([out_f_cls, torch.zeros(out_f_cls.size(0), 4)], dim=1)
+                if out_f_cls.size(1) != d_false_org.size(1):
+                    out_f_cls = out_f_cls[:,:d_false_org.size(1)]
                 d_loss_f_cls = F.binary_cross_entropy_with_logits(out_f_cls, d_false_org,
                                                                   reduction='sum') / out_f_cls.size(
                     0)
 
                 # Compute loss for gradient penalty.
                 alpha = torch.rand(x_real.size(0), 1, 1, 1).to(device)
-                x_hat = (alpha * x_real.data + (1 - alpha) * x_fake.data).requires_grad_(True)
+                x_hat = (alpha * x_real[:, 1:].data + (1 - alpha) * x_fake.data).requires_grad_(True)
                 out_src, _ = nets.netD_i(x_hat)
                 d_loss_gp = gradient_penalty(out_src, x_hat, device)
 
@@ -136,15 +143,20 @@ def train(args):
 
                     d_org = torch.index_select(d_org, dim=0, index=index)
                     d_loss_real_t = -torch.mean(out_src)
+                    if out_cls.size(1) != d_org.size(1):
+                        out_cls = out_cls[:, :d_org.size(1)]
                     d_loss_cls_t = F.binary_cross_entropy_with_logits(out_cls, d_org, reduction='sum') / out_cls.size(0)
 
                     out_src, out_f_cls = nets.netD_t(torch.index_select(t_fake.detach(), dim=0, index=index))
+                    #wavelet
+                    if out_f_cls.size(1) != d_false_org.size(1):
+                        out_f_cls = out_f_cls[:, :d_false_org.size(1)]
                     d_false_org = torch.index_select(d_false_org, dim=0, index=index)
                     d_loss_fake_t = torch.mean(out_src)
                     d_loss_f_cls_t = F.binary_cross_entropy_with_logits(out_f_cls, d_false_org,
                                                                         reduction='sum') / out_f_cls.size(0)
 
-                    x_hat = (alpha * t_img.data + (1 - alpha) * t_fake.data).requires_grad_(True)
+                    x_hat = (alpha * t_img[:, 1:].data + (1 - alpha) * t_fake.data).requires_grad_(True)
                     x_hat = torch.index_select(x_hat, dim=0, index=index)
                     out_src, _ = nets.netD_t(x_hat)
                     d_loss_gp_t = gradient_penalty(out_src, x_hat, device)
@@ -172,6 +184,8 @@ def train(args):
                 x_fake, t_fake = nets.netG(x_real, t_img, c_trg)
                 out_src, out_cls = nets.netD_i(x_fake)
                 g_loss_fake = -torch.mean(out_src)
+                if out_cls.size(1) != g_trg.size(1):
+                    out_cls = out_cls[:, :g_trg.size(1)]
                 g_loss_cls = F.binary_cross_entropy_with_logits(out_cls, g_trg, reduction='sum') / out_cls.size(0)
                 # print("shape shape",netH(x_fake).shape)
 
@@ -184,6 +198,8 @@ def train(args):
                     out_src, out_cls = nets.netD_t(torch.index_select(t_fake, dim=0, index=index))
                     g_trg = torch.index_select(g_trg, dim=0, index=index)
                     g_loss_fake_t = -torch.mean(out_src)
+                    if out_cls.size(1) != g_trg.size(1):
+                        out_cls = out_cls[:, :g_trg.size(1)]
                     g_loss_cls_t = F.binary_cross_entropy_with_logits(out_cls, g_trg, reduction='sum') / out_cls.size(0)
                     gt_loss = g_loss_fake_t + g_loss_cls_t * args.w_g_t_c
                 else:
@@ -267,13 +283,18 @@ def train(args):
 def build_model():
     if not args.real and args.soup:
         disc_c_dim = 8
-    else:
+    elif args.real:
         disc_c_dim = args.c_dim * 2
-    channels = 4 if (not args.real and not args.soup) else 1
+    else:
+        #wavelets
+        disc_c_dim = 8
+    channels = 5 if (not args.real and not args.soup) else 1
+
     netG = Generator(in_c=channels + args.c_dim, mid_c=args.G_conv, layers=2, s_layers=3, affine=True, last_ac=True).to(
         device)
-    netH = ShapeUNet(img_ch=4 if not args.real and not args.last_layer_gen_real else 1, mid=args.h_conv,
-                     output_ch=4 if not args.real and not args.last_layer_gen_real else 1).to(device)
+
+    shape_net_channels = 4 if not args.real and not args.last_layer_gen_real else 1
+    netH = ShapeUNet(img_ch=shape_net_channels, mid=args.h_conv, output_ch=shape_net_channels).to(device)
 
     netD_i = Discriminator(c_dim=disc_c_dim, image_size=args.image_size).to(device)
     netD_t = Discriminator(c_dim=disc_c_dim, image_size=args.image_size).to(device)

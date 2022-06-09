@@ -5,6 +5,7 @@ Liver: 63 (55<<<70)
 import os
 
 from PIL import Image
+from matplotlib import pyplot as plt
 from tqdm import tqdm
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
@@ -15,7 +16,8 @@ import pydicom
 import torch
 import random
 from torchvision import transforms
-
+import pywt
+import pywt.data
 from config import args
 from utils import listdir
 
@@ -136,16 +138,113 @@ class ChaosDataset_Syn_new(Dataset):
         #  scale to [-1,1]
         img = (img - 0.5) / 0.5
         t_img = (t_img - 0.5) / 0.5
+        img_wavelet = wavelet_impi(img, self.image_size)
+        t_img_wavelet = wavelet_impi(t_img, self.image_size)
 
-        return torch.from_numpy(img).type(torch.FloatTensor).unsqueeze(dim=0), \
-               torch.from_numpy(t_img).type(torch.FloatTensor).unsqueeze(dim=0), \
+        img_wavelet = torch.cat([torch.from_numpy(img).unsqueeze(dim=0), torch.from_numpy(img_wavelet)])
+        t_img_wavelet = torch.cat([torch.from_numpy(t_img).unsqueeze(dim=0), torch.from_numpy(t_img_wavelet)])
+
+        #show_4_images(train)
+
+        return img_wavelet.type(torch.FloatTensor), \
+               t_img_wavelet.type(torch.FloatTensor), \
                torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
                torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
                torch.from_numpy(class_label).type(torch.FloatTensor)
 
+        # return torch.from_numpy(img).type(torch.FloatTensor).unsqueeze(dim=0), \
+        #        torch.from_numpy(t_img).type(torch.FloatTensor).unsqueeze(dim=0), \
+        #        torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
+        #        torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
+        #        torch.from_numpy(class_label).type(torch.FloatTensor)
+
     def __len__(self):
         return len(self.raw_dataset)
 
+
+'''
+img should be a numpy array
+'''
+def wavelet_impi(img, image_size):
+    img = cv2.resize(img, (image_size * 2 - 4, image_size * 2 - 4))
+    ll, lh, hl, hh = wavelet_transformation(img)
+
+    qs = np.stack((ll, lh, hl, hh), axis=2)
+
+    amp = np.linalg.norm(qs, axis=2)
+
+    φ_num = (ll * hl + lh * hh) * 2
+    φ_den = (ll * ll + lh * lh - hl * hl - hh * hh)
+    φ = np.arctan(φ_num / φ_den)
+    φ = np.nan_to_num(φ)
+
+    θ_num = (ll * lh + hl * hh)
+    θ_den = (ll * ll - lh * lh + hl * hl - hh * hh)
+    θ = np.arctan(θ_num / θ_den)
+    θ = np.nan_to_num(θ)
+
+    ψ = 0.5 * np.arctan(2 * (ll * hh - hh * lh))
+    ψ = np.nan_to_num(ψ)
+
+    θ = (θ - np.min(θ)) / np.ptp(θ)
+    ψ = (ψ - np.min(ψ)) / np.ptp(ψ)
+    φ = (φ - np.min(φ)) / np.ptp(φ)
+
+    ei = np.exp(φ)
+    ej = np.exp(θ)
+    ek = np.exp(ψ)
+
+    # ei = (ei - np.min(ei))/np.ptp(ei)
+    # ej = (ej - np.min(ej))/np.ptp(ej)
+    # ek = (ek - np.min(ek))/np.ptp(ek)
+    # amp = (amp - np.min(amp))/np.ptp(amp)
+
+    train = np.stack((amp, ei, ej, ek), axis=2)
+
+    train = (train - np.min(train)) / np.ptp(train)
+
+    '''
+    train = qs
+    train =(train - np.min(train))/np.ptp(train)
+    '''
+
+    # train = np.reshape(train, (
+    # train.shape[2], train.shape[0], train.shape[1]))  # array of float32 (4,256,256) valori [0,1]
+    train = np.transpose(train, (2, 0, 1))
+
+    return train
+
+def show_4_images(data):
+    plt.rcParams["figure.figsize"] = [7.00, 3.50]
+    plt.rcParams["figure.autolayout"] = True
+    plt.subplot(1, 4, 1)
+    plt.imshow(data[0], cmap="gray")
+    plt.subplot(1, 4, 2)
+    plt.imshow(data[1], cmap="gray")
+    plt.subplot(1, 4, 3)
+    plt.imshow(data[2], cmap="gray")
+    plt.subplot(1, 4, 4)
+    plt.imshow(data[3], cmap='gray')
+    plt.show()
+
+def wavelet_transformation(img):
+    # Wavelet transform of image
+    # titles = ['Approximation', ' Horizontal detail','Vertical detail', 'Diagonal detail']
+
+    coeffs2 = pywt.dwt2(img, 'bior1.3')  # Biorthogonal wavelet
+    LL, (LH, HL, HH) = coeffs2
+    # fig = plt.figure(figsize=(12, 3))
+    # for i, a in enumerate([LL, LH, HL, HH]):
+    #         ax = fig.add_subplot(1, 4, i + 1)
+    #         ax.imshow(a, interpolation="nearest", cmap=plt.cm.gray)
+    #         ax.set_title(titles[i], fontsize=10)
+    #         ax.set_xticks([])
+    #         ax.set_yticks([])
+
+    # fig.tight_layout()
+    # plt.show()
+
+    return LL, LH, HL, HH
 
 class ChaosDataset_Syn_Test(Dataset):
 

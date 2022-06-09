@@ -4,7 +4,7 @@ import torch
 phm = False  # @param ["True", "False"] {type:"raw"}
 qsn = True  # @param ["True", "False"] {type:"raw"}
 real = False  # @param ["True", "False"] {type:"raw"}
-soup = True  # @param ["True", "False"] {type:"raw"}
+soup = False  # @param ["True", "False"] {type:"raw"}
 share_net_real = True  # @param ["True", "False"] {type:"raw"}
 last_layer_gen_real = False  # @param ["True", "False"] {type:"raw"}
 experiment_name = "test_local"  # @param {type:"string"}
@@ -25,7 +25,7 @@ args = munch.Munch({
     "batch_size": 4,
     "eval_batch_size": 4,
     "gan_version": "Generator[2/3]+shapeunet+D",
-    "image_size": 128,  # 256
+    "image_size": 64,  # 256
     "epoch": 50,
     "sepoch": sepoch,
     "modals": ('t1', 't2', 'ct'),
