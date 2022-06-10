@@ -138,13 +138,19 @@ class ChaosDataset_Syn_new(Dataset):
         #  scale to [-1,1]
         img = (img - 0.5) / 0.5
         t_img = (t_img - 0.5) / 0.5
-        img_wavelet = wavelet_impi(img, self.image_size)
-        t_img_wavelet = wavelet_impi(t_img, self.image_size)
+        #norm
+        # img = (img - np.min(img)) / (np.max(img) - np.min(img))
+        # t_img = (t_img - np.min(t_img)) / (np.max(t_img) - np.min(t_img))
+        # img = img / np.max(img)
+        # t_img = t_img / np.max(t_img)
+
+        img_wavelet = wavelet_real(img, self.image_size)
+        t_img_wavelet = wavelet_real(t_img, self.image_size)
 
         img_wavelet = torch.cat([torch.from_numpy(img).unsqueeze(dim=0), torch.from_numpy(img_wavelet)])
         t_img_wavelet = torch.cat([torch.from_numpy(t_img).unsqueeze(dim=0), torch.from_numpy(t_img_wavelet)])
 
-        #show_4_images(train)
+        #show_4_images(img_wavelet)
 
         return img_wavelet.type(torch.FloatTensor), \
                t_img_wavelet.type(torch.FloatTensor), \
@@ -165,7 +171,7 @@ class ChaosDataset_Syn_new(Dataset):
 '''
 img should be a numpy array
 '''
-def wavelet_impi(img, image_size):
+def wavelet_real(img, image_size):
     img = cv2.resize(img, (image_size * 2 - 4, image_size * 2 - 4))
     ll, lh, hl, hh = wavelet_transformation(img)
 
@@ -186,9 +192,9 @@ def wavelet_impi(img, image_size):
     ψ = 0.5 * np.arctan(2 * (ll * hh - hh * lh))
     ψ = np.nan_to_num(ψ)
 
-    θ = (θ - np.min(θ)) / np.ptp(θ)
-    ψ = (ψ - np.min(ψ)) / np.ptp(ψ)
-    φ = (φ - np.min(φ)) / np.ptp(φ)
+    # θ = (θ - np.min(θ)) / np.ptp(θ)
+    # ψ = (ψ - np.min(ψ)) / np.ptp(ψ)
+    # φ = (φ - np.min(φ)) / np.ptp(φ)
 
     ei = np.exp(φ)
     ej = np.exp(θ)

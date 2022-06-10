@@ -6,10 +6,10 @@ import torchvision
 from munch import Munch
 from torch import nn
 from QGAN.utils.quaternion_layers import QuaternionConv, QuaternionTransposeConv
-from config import args
+from config import args, device
 import torch.nn.functional as F
 
-from dataset import wavelet_impi
+from dataset import wavelet_real
 
 
 class QuaternionInstanceNorm2d(nn.Module):
@@ -343,8 +343,8 @@ class Discriminator(nn.Module):
             x = x[:, 1:] #x_wavelet
         # apply wavelet if not already splitted in 4 channels
         if x.size(1) == 1:
-            lst = [torch.from_numpy(wavelet_impi(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk in torch.split(x, 1, dim=0)]
-            x = torch.stack(lst, dim=0)
+            lst = [torch.from_numpy(wavelet_real(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk in torch.split(x, 1, dim=0)]
+            x = torch.stack(lst, dim=0).to(device)
 
         h = self.main(x)
         # print("discriminatore dopo main",h.shape) #torch.Size([4, 2048, 2, 2])
@@ -397,8 +397,8 @@ class Generator(nn.Module):
         if img.size(1) == 5:
             img_target_wavelet = torch.cat([img_target, img[:, 1:]], dim=1)
         elif img.size(1) == 1:
-            lst = [torch.from_numpy(wavelet_impi(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk  in torch.split(img, 1, dim=0)]
-            x = torch.stack(lst, dim=0)
+            lst = [torch.from_numpy(wavelet_real(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk in torch.split(img, 1, dim=0)]
+            x = torch.stack(lst, dim=0).to(device)
             img_target_wavelet = torch.cat([img_target, x], dim=1)
         # print(" dopo impiccio",img.shape,"c.shape",c.shape) #torch.Size([4, 4, 128, 128]) torch.Size([4, 3, 128, 128])
         # print("tumor",tumor.shape) torch.Size([4, 1, 128, 128])
@@ -422,9 +422,9 @@ class Generator(nn.Module):
             if tumor.size(1) == 5:
                 tumor_target_wavelet = torch.cat([tumor_target, tumor[:, 1:]], dim=1)
             elif tumor.size(1) == 1:
-                lst = [torch.from_numpy(wavelet_impi(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk
+                lst = [torch.from_numpy(wavelet_real(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk
                        in torch.split(tumor, 1, dim=0)]
-                x = torch.stack(lst, dim=0)
+                x = torch.stack(lst, dim=0).to(device)
                 tumor_target_wavelet = torch.cat([tumor_target, x], dim=1)
 
             x_2 = self.target_encoder(tumor_target_wavelet)
@@ -508,8 +508,8 @@ class ShapeUNet(nn.Module):
         #     x = torch.cat([x, grayscale(x)], 1)
         #wavelet
         if x.size(1) == 1:
-            lst = [torch.from_numpy(wavelet_impi(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk in torch.split(x, 1, dim=0)]
-            x = torch.stack(lst, dim=0)
+            lst = [torch.from_numpy(wavelet_real(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk in torch.split(x, 1, dim=0)]
+            x = torch.stack(lst, dim=0).to(device)
         x1 = self.Conv1(x)
 
         x2 = self.Maxpool1(x1)
