@@ -10,3 +10,4 @@ torch
 torchvision
 tqdm
 wandb
+pywavelets

@@ -1,4 +1,3 @@
-ModelsGenesis/*
 datasets/*
 wandb/*
 pretrained_weights/Genesis_Chest_CT.pt
