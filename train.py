@@ -149,7 +149,7 @@ def train(args):
 
                 # compute loss with target images
                 if index.shape[0] != 0:
-                    out_src, out_cls = nets.netD_t(torch.index_select(t_img, dim=0, index=index), wavelets_target)
+                    out_src, out_cls = nets.netD_t(torch.index_select(t_img, dim=0, index=index))#, wavelets_target)
                     # print("Target out src out cls ",out_src.shape,out_cls.shape)
 
                     d_org = torch.index_select(d_org, dim=0, index=index)
