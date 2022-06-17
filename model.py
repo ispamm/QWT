@@ -5,11 +5,14 @@ import torch
 import torchvision
 from munch import Munch
 from torch import nn
+
+from QGAN.utils.QSN2 import Qspectral_norm
 from QGAN.utils.quaternion_layers import QuaternionConv, QuaternionTransposeConv
 from config import args, device
 import torch.nn.functional as F
 
 from dataset import wavelet_real
+from torch.nn.utils.parametrizations import spectral_norm
 
 
 class QuaternionInstanceNorm2d(nn.Module):
@@ -290,7 +293,10 @@ class Discriminator(nn.Module):
         if args.phm:
             layers.append(PHMConv(4, 4, conv_dim, kernel_size=4, stride=2, padding=1))
         elif args.qsn:
-            layers.append(QuaternionConv(4, conv_dim, kernel_size=4, stride=2, padding=1))
+            if args.spectral:
+                layers.append(Qspectral_norm(QuaternionConv(4, conv_dim, kernel_size=4, stride=2, padding=1)))
+            else:
+                layers.append(QuaternionConv(4, conv_dim, kernel_size=4, stride=2, padding=1))
             # layers.append(nn.Conv2d(1, conv_dim, kernel_size=4, stride=2, padding=1))
         elif args.real:
             layers.append(nn.Conv2d(1, conv_dim, kernel_size=4, stride=2, padding=1))
@@ -302,7 +308,10 @@ class Discriminator(nn.Module):
             if args.phm:
                 layers.append(PHMConv(4, curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1))
             elif args.qsn:
-                layers.append(QuaternionConv(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1))
+                if args.spectral:
+                    layers.append(Qspectral_norm(QuaternionConv(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1)))
+                else:
+                    layers.append(QuaternionConv(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1))
             elif args.real:
                 layers.append(nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1))
 
@@ -321,17 +330,27 @@ class Discriminator(nn.Module):
         elif args.qsn:
             # self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
             # self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
-            self.conv1 = QuaternionConv(in_channels=curr_dim, out_channels=4, kernel_size=3, stride=1, padding=1,
-                                        bias=False)
-            self.conv2 = QuaternionConv(in_channels=curr_dim, out_channels=c_dim, kernel_size=kernel_size, stride=1,
-                                        bias=False)
+            if args.spectral:
+                self.conv1 = Qspectral_norm(QuaternionConv(in_channels=curr_dim, out_channels=4, kernel_size=3, stride=1, padding=1,
+                                            bias=False))
+                self.conv2 = Qspectral_norm(QuaternionConv(in_channels=curr_dim, out_channels=c_dim, kernel_size=kernel_size, stride=1,
+                                            bias=False))
+            else:
+                self.conv1 = QuaternionConv(in_channels=curr_dim, out_channels=4, kernel_size=3, stride=1, padding=1,
+                                            bias=False)
+                self.conv2 = QuaternionConv(in_channels=curr_dim, out_channels=c_dim, kernel_size=kernel_size, stride=1,
+                                            bias=False)
         elif args.real:
             self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
             self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
 
         if args.last_layer_gen_real:
-            self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
-            self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
+            if args.spectral:
+                self.conv1 = spectral_norm(nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False))
+                self.conv2 = spectral_norm(nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False))
+            else:
+                self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
+                self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
 
     def forward(self, x_real, wavelets=torch.zeros(1)):
         # print("discriminatore in entrata", x.shape) #torch.Size([4, 1, 128, 128])
