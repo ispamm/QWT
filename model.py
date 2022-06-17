@@ -287,12 +287,12 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         print(args.real)
         layers = []
-        if args.phm and not args.last_layer_gen_real:
+        if args.phm:
             layers.append(PHMConv(4, 4, conv_dim, kernel_size=4, stride=2, padding=1))
-        elif args.qsn and not args.last_layer_gen_real:
+        elif args.qsn:
             layers.append(QuaternionConv(4, conv_dim, kernel_size=4, stride=2, padding=1))
             # layers.append(nn.Conv2d(1, conv_dim, kernel_size=4, stride=2, padding=1))
-        elif args.real or args.last_layer_gen_real:
+        elif args.real:
             layers.append(nn.Conv2d(1, conv_dim, kernel_size=4, stride=2, padding=1))
 
         layers.append(nn.LeakyReLU(0.01))
@@ -331,22 +331,33 @@ class Discriminator(nn.Module):
 
         if args.last_layer_gen_real:
             self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
+            self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
 
-    def forward(self, x):
+    def forward(self, x_real, wavelets=None):
         # print("discriminatore in entrata", x.shape) #torch.Size([4, 1, 128, 128])
         # rgb + aalpha
         # FOR WAVELET COMMENTED
         # if (not args.real and args.soup) and not args.last_layer_gen_real:
         #     x = x.repeat(1, 3, 1, 1)
         #     x = torch.cat([x, grayscale(x)], 1)
-        if x.size(1) == 5:
-            x = x[:, 1:] #x_wavelet
-        # apply wavelet if not already splitted in 4 channels
-        if x.size(1) == 1:
-            lst = [torch.from_numpy(wavelet_real(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk in torch.split(x, 1, dim=0)]
-            x = torch.stack(lst, dim=0).to(device)
 
-        h = self.main(x)
+        if wavelets is not None:
+            if wavelets.any() != 0:
+                h = self.main(wavelets)
+                # print('disc - img5')
+
+        # apply wavelet if not already splitted in 4 channels
+        elif x_real.size(1) == 1 and args.wavelet_disc_gen[0]:
+            h = self.main(create_wavelet_from_input_tensor(x_real))
+            #h = self.main(torch.randn(1, 4, 64, 64).requires_grad_(x_real.requires_grad))
+
+            # print('disc - img1', x.requires_grad)
+        elif x_real.size(1) == 1:
+            x = x_real.repeat(1, 3, 1, 1)
+            x = torch.cat([x, grayscale(x)], 1)
+            h = self.main(x)
+        # elif inputs.size(1) == 4:
+        #     x = inputs.clone().detach()
         # print("discriminatore dopo main",h.shape) #torch.Size([4, 2048, 2, 2])
         out_src = self.conv1(h)
         out_cls = self.conv2(h)
@@ -355,6 +366,13 @@ class Discriminator(nn.Module):
         # print("discriminatore out src",out_src.shape) #torch.Size([4, 1, 2, 2])
         # print("discriminatore out cls",out_cls.shape, "view",out_cls.view(out_cls.size(0), out_cls.size(1)).shape) #torch.Size([4, 6, 1, 1]) view torch.Size([4, 6])
         return out_src, out_cls.view(out_cls.size(0), out_cls.size(1))
+
+
+@torch.no_grad()
+def create_wavelet_from_input_tensor(inputs):
+    lst = [torch.from_numpy(wavelet_real(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk in
+           torch.split(inputs.detach(), 1, dim=0)]
+    return torch.stack(lst, dim=0).to(device)
 
 
 grayscale = torchvision.transforms.Grayscale(num_output_channels=1)
@@ -393,23 +411,29 @@ class Generator(nn.Module):
         # print("input img shape",img.shape, c.shape) torch.Size([4, 1, 128, 128]) torch.Size([4, 3])
         c = c.view(c.size(0), c.size(1), 1, 1)
         c = c.repeat(1, 1, img.size(2), img.size(3))
-        img_target = torch.cat([img[:, :1], c], dim=1)
-        if img.size(1) == 5:
-            img_target_wavelet = torch.cat([img_target, img[:, 1:]], dim=1)
-        elif img.size(1) == 1:
-            lst = [torch.from_numpy(wavelet_real(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk in torch.split(img, 1, dim=0)]
-            x = torch.stack(lst, dim=0).to(device)
-            img_target_wavelet = torch.cat([img_target, x], dim=1)
-        # print(" dopo impiccio",img.shape,"c.shape",c.shape) #torch.Size([4, 4, 128, 128]) torch.Size([4, 3, 128, 128])
+        img_target = torch.cat([img, c], dim=1)
+        # if img.size(1) == 5:
+        #    img_target_wavelet = torch.cat([img_target, wavelet_img], dim=1)
+        # print('gen - img5')
+        # add wavelet to img_target so now tensor is (1real+3target,4wavelets) = 8 channels so 2 quaternion
+        if img.size(1) == 1 and args.wavelet_disc_gen[1]:
+            img_target = torch.cat([img_target, create_wavelet_from_input_tensor(img)], dim=1)
+            #img_target = torch.cat([img_target, torch.randn(1, 4, 64, 64).requires_grad_(img.requires_grad)], dim=1)
+            # print('gen - img1')
+        # # print(" dopo impiccio",img.shape,"c.shape",c.shape) #torch.Size([4, 4, 128, 128]) torch.Size([4, 3, 128, 128])
         # print("tumor",tumor.shape) torch.Size([4, 1, 128, 128])
-        x_1 = self.img_encoder(img_target_wavelet)
+
+        # print('gen - img4', img_target.requires_grad)
+        x_1 = self.img_encoder(img_target)
+
         # print(x_1[-1][1].shape,"x_1")
         s_1 = self.share_net(x_1)
         # print(s_1.shape,"s_1")
         res_img = self.out_img(self.img_decoder(s_1, x_1))
         if not args.real and args.soup:
             res_img = res_img[:, :1, :, :]
-        res_img = res_img[:, :1, :, :]
+        # wavelet
+        # res_img = res_img[:, :1, :, :]
 
         # print(res_img.shape)#torch.Size([4, 1, 128, 128])
         if self.last_ac:
@@ -418,16 +442,19 @@ class Generator(nn.Module):
             ###rgb###
             # tumor = tumor.repeat(1,3, 1, 1)
             #####
-            tumor_target = torch.cat([tumor[:, :1], c], dim=1)
-            if tumor.size(1) == 5:
-                tumor_target_wavelet = torch.cat([tumor_target, tumor[:, 1:]], dim=1)
-            elif tumor.size(1) == 1:
-                lst = [torch.from_numpy(wavelet_real(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk
-                       in torch.split(tumor, 1, dim=0)]
-                x = torch.stack(lst, dim=0).to(device)
-                tumor_target_wavelet = torch.cat([tumor_target, x], dim=1)
+            tumor_target = torch.cat([tumor, c], dim=1)
+            # if tumor.size(1) == 5:
+            #    tumor_target_wavelet = torch.cat([tumor_target, wavelet_tumor], dim=1)
+            # print('gen tum- img5')
 
-            x_2 = self.target_encoder(tumor_target_wavelet)
+            if tumor.size(1) == 1 and args.wavelet_disc_gen[1]:
+                tumor_target = torch.cat([tumor_target, create_wavelet_from_input_tensor(tumor)], dim=1)
+                #tumor_target = torch.cat([tumor_target, torch.randn(1, 4, 64, 64).requires_grad_(tumor.requires_grad)],dim=1)
+
+                # print('gen tum- img1')
+
+            x_2 = self.target_encoder(tumor_target)
+
             s_2 = self.share_net(x_2)
             res_tumor = self.out_tumor(self.target_decoder(s_2, x_2))
             if self.last_ac:
@@ -435,7 +462,8 @@ class Generator(nn.Module):
             if not args.real and args.soup:
                 res_tumor = res_tumor[:, :1, :, :]
 
-            res_tumor = res_tumor[:, :1, :, :]
+            # wavelet
+            # res_tumor = res_tumor[:, :1, :, :]
 
             return res_img, res_tumor
         return res_img
@@ -461,13 +489,14 @@ class ShapeUNet(nn.Module):
         if args.last_layer_gen_real:
             old_phm = args.phm
             old_qsn = args.qsn
+            old_real = args.real
             args.phm = False
             args.qsn = False
             args.real = True
             self.Conv1 = conv_block(ch_in=img_ch, ch_out=mid)
             args.phm = old_phm
             args.qsn = old_qsn
-            args.real = False
+            args.real = old_real
         self.Conv2 = conv_block(ch_in=mid, ch_out=mid * 2)
         self.Conv3 = conv_block(ch_in=mid * 2, ch_out=mid * 4)
         self.Conv4 = conv_block(ch_in=mid * 4, ch_out=mid * 8)
@@ -506,10 +535,12 @@ class ShapeUNet(nn.Module):
         # if (not args.real and args.soup) and not args.last_layer_gen_real:
         #     x = x.repeat(1, 3, 1, 1)
         #     x = torch.cat([x, grayscale(x)], 1)
-        #wavelet
-        if x.size(1) == 1:
-            lst = [torch.from_numpy(wavelet_real(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk in torch.split(x, 1, dim=0)]
-            x = torch.stack(lst, dim=0).to(device)
+        # wavelet
+        if x.size(1) == 1 and args.wavelet_disc_gen[1]:
+            x = create_wavelet_from_input_tensor(x)
+        elif x.size(1) == 1:
+            x = x.repeat(1, 3, 1, 1)
+            x = torch.cat([x, grayscale(x)], 1)
         x1 = self.Conv1(x)
 
         x2 = self.Maxpool1(x1)
@@ -545,7 +576,7 @@ class ShapeUNet(nn.Module):
         d1 = self.Conv_1x1(d2)
         if (not args.real and args.soup) and not args.last_layer_gen_real:
             d1 = d1[:, :1, :, :]
-        #wavelet
+        # wavelet
         d1 = d1[:, :1, :, :]
 
         return torch.sigmoid(d1)

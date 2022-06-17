@@ -18,8 +18,15 @@ import random
 from torchvision import transforms
 import pywt
 import pywt.data
+from itertools import chain
+from pathlib import Path
 from config import args
-from utils import listdir
+
+
+def listdir(dname):
+    fnames = list(chain(*[list(Path(dname).rglob('*.' + ext))
+                          for ext in ['png', 'jpg', 'jpeg', 'JPG']]))
+    return fnames
 
 
 class ChaosDataset_Syn_new(Dataset):
@@ -138,31 +145,31 @@ class ChaosDataset_Syn_new(Dataset):
         #  scale to [-1,1]
         img = (img - 0.5) / 0.5
         t_img = (t_img - 0.5) / 0.5
-        #norm
+        # norm
         # img = (img - np.min(img)) / (np.max(img) - np.min(img))
         # t_img = (t_img - np.min(t_img)) / (np.max(t_img) - np.min(t_img))
         # img = img / np.max(img)
         # t_img = t_img / np.max(t_img)
+        if args.wavelet_disc_gen[0]:
+            img_wavelet = wavelet_real(img, self.image_size)
+            t_img_wavelet = wavelet_real(t_img, self.image_size)
 
-        img_wavelet = wavelet_real(img, self.image_size)
-        t_img_wavelet = wavelet_real(t_img, self.image_size)
+            img_wavelet_tup = (torch.from_numpy(img).unsqueeze(dim=0).type(torch.FloatTensor),
+                               torch.from_numpy(img_wavelet).type(torch.FloatTensor))
+            t_img_wavelet_tup = (torch.from_numpy(t_img).unsqueeze(dim=0).type(torch.FloatTensor),
+                                 torch.from_numpy(t_img_wavelet).type(torch.FloatTensor))
+            return img_wavelet_tup, \
+                   t_img_wavelet_tup, \
+                   torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
+                   torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
+                   torch.from_numpy(class_label).type(torch.FloatTensor)
+        else:
 
-        img_wavelet = torch.cat([torch.from_numpy(img).unsqueeze(dim=0), torch.from_numpy(img_wavelet)])
-        t_img_wavelet = torch.cat([torch.from_numpy(t_img).unsqueeze(dim=0), torch.from_numpy(t_img_wavelet)])
-
-        #show_4_images(img_wavelet)
-
-        return img_wavelet.type(torch.FloatTensor), \
-               t_img_wavelet.type(torch.FloatTensor), \
-               torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
-               torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
-               torch.from_numpy(class_label).type(torch.FloatTensor)
-
-        # return torch.from_numpy(img).type(torch.FloatTensor).unsqueeze(dim=0), \
-        #        torch.from_numpy(t_img).type(torch.FloatTensor).unsqueeze(dim=0), \
-        #        torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
-        #        torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
-        #        torch.from_numpy(class_label).type(torch.FloatTensor)
+            return (torch.from_numpy(img).type(torch.FloatTensor).unsqueeze(dim=0), torch.zeros(1)), \
+                   (torch.from_numpy(t_img).type(torch.FloatTensor).unsqueeze(dim=0), torch.zeros(1)), \
+                   torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
+                   torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
+                   torch.from_numpy(class_label).type(torch.FloatTensor)
 
     def __len__(self):
         return len(self.raw_dataset)
@@ -171,6 +178,9 @@ class ChaosDataset_Syn_new(Dataset):
 '''
 img should be a numpy array
 '''
+
+
+@torch.no_grad()
 def wavelet_real(img, image_size):
     img = cv2.resize(img, (image_size * 2 - 4, image_size * 2 - 4))
     ll, lh, hl, hh = wavelet_transformation(img)
@@ -220,6 +230,7 @@ def wavelet_real(img, image_size):
 
     return train
 
+
 def show_4_images(data):
     plt.rcParams["figure.figsize"] = [7.00, 3.50]
     plt.rcParams["figure.autolayout"] = True
@@ -232,6 +243,7 @@ def show_4_images(data):
     plt.subplot(1, 4, 4)
     plt.imshow(data[3], cmap='gray')
     plt.show()
+
 
 def wavelet_transformation(img):
     # Wavelet transform of image
@@ -251,6 +263,7 @@ def wavelet_transformation(img):
     # plt.show()
 
     return LL, LH, HL, HH
+
 
 class ChaosDataset_Syn_Test(Dataset):
 
@@ -464,6 +477,7 @@ def get_eval_loader(root, img_size=256, batch_size=32,
                       drop_last=drop_last,
                       collate_fn=None
                       )
+
 
 def make_dataset_consistent(mr_dir="/content/drive/MyDrive/Thesis/Datasets/chaos2019/train/MR/",
                             t1_t2_dir="/content/drive/MyDrive/Thesis/Datasets/chaos2019/train/"):

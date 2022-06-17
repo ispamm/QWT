@@ -7,11 +7,12 @@ from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torch.nn.functional as F
+import wandb
 
 from config import device, args
-from dataset import ChaosDataset_Syn_Test, MyDataset
-from pytorch import unet3d
-from utils import save_image, getLabel, label2onehot, save_json
+from dataset import ChaosDataset_Syn_Test, ChaosDataset_Syn_new, MyDataset
+from ModelsGenesis import unet3d
+from utils import build_model, load_nets, save_image, getLabel, label2onehot, save_json
 import pydicom
 import numpy as np
 import glob
@@ -529,6 +530,9 @@ def eval_dice_or_s_score(nets, idx_eval, syneval_loader, dice_=False):
             save_image(t_fake[k], ncol=1, filename=filename)
             filename = os.path.join("Ground",
                                     '%.4i_%.2i.png' % (args.sepoch * args.eval_batch_size + (k + 1), epoch + 1))
+            if t_img.size(1) == 5:
+                t_img = t_img[:,:1]
+
             save_image(t_img[k], ncol=1, filename=filename)
 
 
@@ -615,7 +619,7 @@ def calculate_FID_Giov(nets, args, step, mode,
                 if lpips_value != 0:
                     lpips_values.append(lpips_value)
                 else:
-                    print("MANNAGGIA")
+                    print("Lpips value for FID giovanni is 0")
             # print(lpips_values)
             # calculate LPIPS for each task (e.g. cat2dog, dog2cat)
             lpips_mean = np.array(lpips_values).mean()
@@ -776,3 +780,35 @@ def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_datas
         #     print('S-score = %.3f' %(dice))
 
     return fid_stargan, fid_dict, dice_dict, ravd_dict, s_score_dict, fid_giov
+
+
+def evaluation():
+    syneval_dataset = ChaosDataset_Syn_Test(path=args.dataset_path, modal=args.modals[0], gan=True,
+                                            image_size=args.image_size)
+    syneval_dataset2 = ChaosDataset_Syn_Test(path=args.dataset_path, modal=args.modals[1], gan=True,
+                                             image_size=args.image_size)
+    syneval_dataset3 = ChaosDataset_Syn_Test(path=args.dataset_path, modal=args.modals[2], gan=True,
+                                             image_size=args.image_size)
+    syneval_dataset4 = ChaosDataset_Syn_new(path=args.dataset_path, split='test', modals=args.modals,
+                                            image_size=args.image_size)
+    syneval_loader = DataLoader(syneval_dataset4, batch_size=args.batch_size,
+                                shuffle=True if args.mode != "sample" else False, collate_fn=None )#if (
+                # args.real or (not args.real and args.soup)) else convert_data_for_quaternion_tarGAN)
+    ii = args.sepoch*650
+    nets, disc_c_dim = build_model()
+    load_nets(nets)
+    with wandb.init(config=args, project="quattargan") as run:
+        wandb.run.name = args.experiment_name
+        fidstar,fid,dice,ravd,s_score,fid_giov = calculate_all_metrics(nets, 
+                                                                        syneval_dataset, 
+                                                                        syneval_dataset2, 
+                                                                        syneval_dataset3, 
+                                                                        syneval_loader, 
+                                                                        fid_png=False)
+        wandb.log(dict(fidstar),step=ii+1,commit=False)
+        wandb.log(dict(fid),step=ii+1,commit=False)
+        wandb.log(dict(fid_giov),step=ii+1,commit=False)
+
+        wandb.log(dict(dice),step=ii+1,commit=False)
+        wandb.log(dict(ravd),step=ii+1,commit=False)
+        wandb.log(dict(s_score),step=ii+1,commit=True)

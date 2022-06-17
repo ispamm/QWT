@@ -1,8 +1,9 @@
+import copy
 import json
 import os
 import random
-from itertools import chain
-from pathlib import Path
+
+import munch
 
 import numpy as np
 import torch
@@ -11,6 +12,7 @@ import wandb
 import torchvision.utils as vutils
 
 from config import args, device
+from model import Discriminator, Generator, ShapeUNet
 
 
 def loss_filter(mask, device="cuda"):
@@ -58,7 +60,7 @@ def getLabel(imgs, device, index, c_dim=2):
     syn_labels[:, index] = 1.
     return syn_labels
 
-
+ 
 def gradient_penalty(y, x, device):
     """Compute gradient penalty: (L2_norm(dy/dx) - 1)**2."""
     weight = torch.ones(y.size()).to(device)
@@ -103,12 +105,6 @@ def load_state_net(net, net_name, index, optim=None, parents_root='checkpoints/M
 def moving_average(model, model_test, beta=0.999):
     for param, param_test in zip(model.parameters(), model_test.parameters()):
         param_test.data = torch.lerp(param.data, param_test.data, beta)
-
-
-def listdir(dname):
-    fnames = list(chain(*[list(Path(dname).rglob('*.' + ext))
-                          for ext in ['png', 'jpg', 'jpeg', 'JPG']]))
-    return fnames
 
 
 def plot_images(netG_use, i, syneval_dataset, syneval_dataset2, syneval_dataset3):
@@ -165,4 +161,61 @@ def save_image(x, ncol, filename):
     # iters = str(int(filename.split("/")[9].split("_")[0]))
     vutils.save_image(x.cpu(), filename, nrow=ncol, padding=0)
     if len(x.shape) == 4 and args.mode == "train":
-        wandb.log({sample_dir: wandb.Image(filename, caption=iters)}, commit=False)
+        wandb.log({'sample_dir': wandb.Image(filename, caption=iters)}, commit=False)
+
+def load_nets(nets):
+    for net in nets.keys():
+        print("loading", net)
+        net_check = net if "use" in net else net.replace("_", "")
+        load_state_net(nets[net], net_check, args.sepoch)
+
+
+def build_model():
+    if not args.real and args.soup:
+        disc_c_dim = 8
+    elif args.real:
+        disc_c_dim = args.c_dim * 2
+    else:
+        #wavelets
+        disc_c_dim = 6
+    channels = 5 if (not args.real and not args.soup and args.wavelet_disc_gen[1]) else 1
+    netG = Generator(in_c=channels + args.c_dim, mid_c=args.G_conv, layers=2, s_layers=3, affine=True, last_ac=True).to(
+        device)
+
+    shape_net_channels = 4 if not args.real else 1
+    netH = ShapeUNet(img_ch=shape_net_channels, mid=args.h_conv, output_ch=shape_net_channels).to(device)
+
+    netD_i = Discriminator(c_dim=disc_c_dim, image_size=args.image_size).to(device)
+    netD_t = Discriminator(c_dim=disc_c_dim, image_size=args.image_size).to(device)
+
+    netG_use = copy.deepcopy(netG)
+    netG.to(device)
+    netD_i.to(device)
+    netD_t.to(device)
+    netH.to(device)
+    netG_use.to(device)
+    nets = munch.Munch({"netG": netG,
+                        "netD_i": netD_i,
+                        "netD_t": netD_t,
+                        "netH": netH,
+                        "netG_use": netG_use})
+    return nets, disc_c_dim
+
+
+def build_optims(nets, glr, dlr):
+    g_optimizier = torch.optim.Adam(nets.netG.parameters(), lr=glr, betas=(args.betas[0], args.betas[1]))
+    di_optimizier = torch.optim.Adam(nets.netD_i.parameters(), lr=dlr, betas=(args.betas[0], args.betas[1]))
+    dt_optimizier = torch.optim.Adam(nets.netD_t.parameters(), lr=dlr, betas=(args.betas[0], args.betas[1]))
+    h_optimizier = torch.optim.Adam(nets.netH.parameters(), lr=glr, betas=(args.betas[0], args.betas[1]))
+
+    return munch.Munch({"g_optimizier": g_optimizier, "di_optimizier": di_optimizier, "dt_optimizier": dt_optimizier,
+                        "h_optimizier": h_optimizier})
+
+
+def print_network(network, name):
+    num_params = 0
+    for p in network.parameters():
+        num_params += p.numel()
+    # print(network)
+    print("Number of parameters of %s: %i" % (name, num_params))
+    return num_params

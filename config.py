@@ -6,11 +6,12 @@ qsn = True  # @param ["True", "False"] {type:"raw"}
 real = False  # @param ["True", "False"] {type:"raw"}
 soup = False  # @param ["True", "False"] {type:"raw"}
 share_net_real = True  # @param ["True", "False"] {type:"raw"}
-last_layer_gen_real = False  # @param ["True", "False"] {type:"raw"}
-experiment_name = "test_local"  # @param {type:"string"}
+last_layer_gen_real = True  # @param ["True", "False"] {type:"raw"}
+wavelet_disc_gen = (True, False) # @param ["real", "false"]
+experiment_name = "wavelet-server"  # @param {type:"string"}
 mode = "train"  # @param ["train", "eval","sample"]
 sepoch = 0  # @param {type:"integer"}
-gpu_num = -1
+gpu_num = 0
 
 args = munch.Munch({
     "mode": mode,
@@ -22,8 +23,8 @@ args = munch.Munch({
     "val_img_dir": "datasets/chaos2019/test",
     "eval_dir": "eval",
     "checkpoint_dir": "pretrained_weights/checkpoints/MICCAI2021/",
-    "batch_size": 4,
-    "eval_batch_size": 4,
+    "batch_size": 16,
+    "eval_batch_size": 16,
     "gan_version": "Generator[2/3]+shapeunet+D",
     "image_size": 64,  # 256
     "epoch": 50,
@@ -55,6 +56,7 @@ args = munch.Munch({
     "soup": soup,
     "last_layer_gen_real": last_layer_gen_real,
     "share_net_real": share_net_real,
+    "wavelet_disc_gen": wavelet_disc_gen,
     "seed": 888,
     "gpu_num": gpu_num
 })

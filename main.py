@@ -1,10 +1,9 @@
 import torch
 import random
 import numpy as np
-import json
-from munch import Munch
 
 from config import args
+from metrics import evaluation
 from train import train
 from sample import sample
 
@@ -28,5 +27,7 @@ if __name__ == '__main__':
     print(args)
     if args.mode == "train":
         train(args)
+    if args.mode == "eval":
+        evaluation()
     if args.mode == "sample":
         sample()
