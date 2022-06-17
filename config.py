@@ -7,12 +7,12 @@ real = False  # @param ["True", "False"] {type:"raw"}
 soup = False  # @param ["True", "False"] {type:"raw"}
 share_net_real = True  # @param ["True", "False"] {type:"raw"}
 last_layer_gen_real = True  # @param ["True", "False"] {type:"raw"}
-wavelet_disc_gen = (True, False) # @param ["real", "false"]
+wavelet_disc_gen = (True, True) # @param ["real", "false"]
 spectral = True
 experiment_name = "wavelet-server"  # @param {type:"string"}
 mode = "train"  # @param ["train", "eval","sample"]
 sepoch = 0  # @param {type:"integer"}
-gpu_num = -1
+gpu_num = 0
 
 args = munch.Munch({
     "mode": mode,

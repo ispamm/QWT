@@ -459,7 +459,7 @@ def eval_dice_or_s_score(nets, idx_eval, syneval_loader, dice_=False):
     os.makedirs("Segmentation")
     os.makedirs("Ground")
     plotted = 0
-    for epoch, (x_real, t_img, shape_mask, mask, label_org) in tqdm(enumerate(syneval_loader),
+    for epoch, ((x_real,wavelet_real), (t_img,wavelet_target), shape_mask, mask, label_org) in tqdm(enumerate(syneval_loader),
                                                                     total=len(syneval_loader)):
         rand_idx = torch.randperm(label_org.size(0))
         # label_trg = label_org[rand_idx]
@@ -734,7 +734,7 @@ def calculate_FID_Giovanni_given_images(group_of_images, ground_of_images):
 
 
 def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_dataset3, syneval_loader, fid_png=False):
-    _, fid_stargan = calculate_metrics(nets, args, args.sepoch, args.experiment_name,
+    _, fid_stargan = calculate_metrics(nets, args, args.sepoch, '',
                                        syneval_dataset,
                                        syneval_dataset2,
                                        syneval_dataset3)
@@ -743,7 +743,7 @@ def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_datas
     else:
         fid_dict = {}
     mod = ["t1", "t2", "ct"]
-    fid_giov = calculate_FID_Giov(nets, args, args.sepoch, args.experiment_name,
+    fid_giov = calculate_FID_Giov(nets, args, args.sepoch, '',
                                   syneval_dataset,
                                   syneval_dataset2,
                                   syneval_dataset3)

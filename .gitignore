@@ -2,6 +2,9 @@ datasets/*
 wandb/*
 pretrained_weights/Genesis_Chest_CT.pt
 pretrained_weights/checkpoints/MICCAI2021
+eval/*
+Ground/*
+Segmentation/*
 ### Linux ###
 *~
 ### PyCharm ###
