@@ -26,7 +26,7 @@ args = munch.Munch({
     "batch_size": 16,
     "eval_batch_size": 16,
     "gan_version": "Generator[2/3]+shapeunet+D",
-    "image_size": 64,  # 256
+    "image_size": 128,  # 256
     "epoch": 50,
     "sepoch": sepoch,
     "modals": ('t1', 't2', 'ct'),

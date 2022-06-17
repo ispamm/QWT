@@ -333,7 +333,7 @@ class Discriminator(nn.Module):
             self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
             self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
 
-    def forward(self, x_real, wavelets=None):
+    def forward(self, x_real, wavelets=torch.zeros(1)):
         # print("discriminatore in entrata", x.shape) #torch.Size([4, 1, 128, 128])
         # rgb + aalpha
         # FOR WAVELET COMMENTED
@@ -341,10 +341,9 @@ class Discriminator(nn.Module):
         #     x = x.repeat(1, 3, 1, 1)
         #     x = torch.cat([x, grayscale(x)], 1)
 
-        if wavelets is not None:
-            if wavelets.any() != 0:
-                h = self.main(wavelets)
-                # print('disc - img5')
+        if wavelets.any() != 0:
+            h = self.main(wavelets)
+            # print('disc - img5')
 
         # apply wavelet if not already splitted in 4 channels
         elif x_real.size(1) == 1 and args.wavelet_disc_gen[0]:
