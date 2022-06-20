@@ -110,7 +110,7 @@ def train(args):
                 index = loss_filter(mask, device)
                 # 2. Train the discriminator
                 # Compute loss with real whole images.
-                out_src, out_cls = nets.netD_i(x_real, wavelets_img)
+                out_src, out_cls = nets.netD_i(x_real)
                 # print("out src out cls ",out_src.shape,out_cls.shape)
                 # print("out src",out_src.shape,out_cls.shape)
                 d_loss_real = -torch.mean(out_src)

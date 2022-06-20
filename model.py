@@ -11,7 +11,7 @@ from QGAN.utils.quaternion_layers import QuaternionConv, QuaternionTransposeConv
 from config import args, device
 import torch.nn.functional as F
 
-from dataset import wavelet_real
+from dataset import wavelet_wrapper
 from torch.nn.utils.parametrizations import spectral_norm
 
 
@@ -366,6 +366,11 @@ class Discriminator(nn.Module):
 
         # apply wavelet if not already splitted in 4 channels
         elif x_real.size(1) == 1 and args.wavelet_disc_gen[0]:
+            # h = self.main(torch.cat([
+            #     x_real, 
+            #     create_wavelet_from_input_tensor(x_real)[:,1:]
+            #     ], dim=1).to(device)
+            #     )
             h = self.main(create_wavelet_from_input_tensor(x_real))
             #h = self.main(torch.randn(1, 4, 64, 64).requires_grad_(x_real.requires_grad))
 
@@ -388,7 +393,7 @@ class Discriminator(nn.Module):
 
 @torch.no_grad()
 def create_wavelet_from_input_tensor(inputs):
-    lst = [torch.from_numpy(wavelet_real(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))) for chunk in
+    lst = [torch.from_numpy(wavelet_wrapper(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))).type(torch.FloatTensor) for chunk in
            torch.split(inputs.detach(), 1, dim=0)]
     return torch.stack(lst, dim=0).to(device)
 

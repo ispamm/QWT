@@ -3,6 +3,7 @@ mask[256，256]
 Liver: 63 (55<<<70)
 """
 import os
+import wave
 
 from PIL import Image
 from matplotlib import pyplot as plt
@@ -21,7 +22,12 @@ import pywt.data
 from itertools import chain
 from pathlib import Path
 from config import args
-
+from scipy.fftpack import hilbert as ht
+from six.moves import xrange
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from imageio import imread
 
 def listdir(dname):
     fnames = list(chain(*[list(Path(dname).rglob('*.' + ext))
@@ -150,21 +156,21 @@ class ChaosDataset_Syn_new(Dataset):
         # t_img = (t_img - np.min(t_img)) / (np.max(t_img) - np.min(t_img))
         # img = img / np.max(img)
         # t_img = t_img / np.max(t_img)
-        if args.wavelet_disc_gen[0]:
-            img_wavelet = wavelet_real(img, self.image_size)
-            t_img_wavelet = wavelet_real(t_img, self.image_size)
+        if args.wavelet_disc_gen[0] or args.wavelet_disc_gen[1]:
+            img_wavelet = wavelet_wrapper(img, self.image_size)
+            t_img_wavelet = wavelet_wrapper(t_img, self.image_size)
 
             img_wavelet_tup = (torch.from_numpy(img).unsqueeze(dim=0).type(torch.FloatTensor),
                                torch.from_numpy(img_wavelet).type(torch.FloatTensor))
             t_img_wavelet_tup = (torch.from_numpy(t_img).unsqueeze(dim=0).type(torch.FloatTensor),
                                  torch.from_numpy(t_img_wavelet).type(torch.FloatTensor))
+            #show_4_images(img, img_wavelet, class_label)
             return img_wavelet_tup, \
                    t_img_wavelet_tup, \
                    torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
                    torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
                    torch.from_numpy(class_label).type(torch.FloatTensor)
         else:
-
             return (torch.from_numpy(img).type(torch.FloatTensor).unsqueeze(dim=0), torch.zeros(1)), \
                    (torch.from_numpy(t_img).type(torch.FloatTensor).unsqueeze(dim=0), torch.zeros(1)), \
                    torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
@@ -178,6 +184,59 @@ class ChaosDataset_Syn_new(Dataset):
 '''
 img should be a numpy array
 '''
+
+
+def wavelet_wrapper(img, img_size):
+    if args.wavelet_type == 'real':
+        return wavelet_real(img,img_size)
+    elif args.wavelet_type == 'quat':
+        return wavelet_quat(img,img_size)
+    else:
+        raise Exception
+
+
+@torch.no_grad()
+def wavelet_quat(image,image_size):
+    
+    ########## IMAGE ###############
+    #image = imread(image)
+    # image = image/255.0
+    image = np.dot(image[...,:3], [0.299, 0.587, 0.114])
+    # image = cv2.resize(image, (256, 256))
+    image = cv2.resize(image, (image_size*2, image_size*2))
+
+    # print sizes
+    # print("Image size:", image.shape)
+
+    gl, gh, fl, fh = get_filters()
+    q0, q1, q2, q3 = qwt(image, gl, gh, fl, fh, only_low=False, quad="all")
+    # q0, q1, q2, q3 = self.quat_mag_and_phase(q0, q1, q2, q3)
+
+    q0, q1, q2, q3 = q0[2:,:], q1[2:,:], q2[2:,:], q3[2:,:]
+
+    q0 = q0.reshape(q0.shape[0], q0.shape[1], 1)
+    q1 = q1.reshape(q1.shape[0], q1.shape[1], 1)
+    q2 = q2.reshape(q2.shape[0], q2.shape[1], 1)
+    q3 = q3.reshape(q3.shape[0], q3.shape[1], 1)
+
+    image = np.concatenate((q0, q1, q2, q3), axis=2)
+
+    ########## MASK ###############                             
+    # mask = imread(mask, as_gray=True)
+    # mask = cv2.resize(mask, (256, 256))
+    # mask = (mask>0.5).astype('float32')
+
+    # mask = np.expand_dims(mask, axis=0)
+    image = image.transpose(2,0,1)
+    
+    #print("IMAGE-->", np.shape(image))
+    #print("MASK-->", np.shape(mask))
+    
+    #image_tensor = torch.from_numpy(image.astype(np.float32))
+    #mask_tensor = torch.from_numpy(mask.astype(np.float32))
+
+    # return tensors
+    return image#, mask_tensor
 
 
 @torch.no_grad()
@@ -231,18 +290,20 @@ def wavelet_real(img, image_size):
     return train
 
 
-def show_4_images(data):
+def show_4_images(original, data, label):
     plt.rcParams["figure.figsize"] = [7.00, 3.50]
     plt.rcParams["figure.autolayout"] = True
-    plt.subplot(1, 4, 1)
+    plt.subplot(1, 5, 1)
+    plt.imshow(original, cmap="gray")
+    plt.subplot(1, 5, 2)
     plt.imshow(data[0], cmap="gray")
-    plt.subplot(1, 4, 2)
+    plt.subplot(1, 5, 3)
     plt.imshow(data[1], cmap="gray")
-    plt.subplot(1, 4, 3)
-    plt.imshow(data[2], cmap="gray")
-    plt.subplot(1, 4, 4)
+    plt.subplot(1, 5, 4)
+    plt.imshow(data[2], cmap='gray')
+    plt.subplot(1, 5, 5)
     plt.imshow(data[3], cmap='gray')
-    plt.show()
+    plt.savefig(str(label)+'_books_read.png')
 
 
 def wavelet_transformation(img):
@@ -263,6 +324,314 @@ def wavelet_transformation(img):
     # plt.show()
 
     return LL, LH, HL, HH
+
+
+def pywt_coeffs():
+    # coefficients from pywt db8 (http://wavelets.pybytes.com/wavelet/db8/)
+    gl = [-0.00011747678400228192,
+    0.0006754494059985568,
+    -0.0003917403729959771,
+    -0.00487035299301066,
+    0.008746094047015655,
+    0.013981027917015516,
+    -0.04408825393106472,
+    -0.01736930100202211,
+    0.128747426620186,
+    0.00047248457399797254,
+    -0.2840155429624281,
+    -0.015829105256023893,
+    0.5853546836548691,
+    0.6756307362980128,
+    0.3128715909144659,
+    0.05441584224308161
+    ]
+
+    gh = [-0.05441584224308161,
+    0.3128715909144659,
+    -0.6756307362980128,
+    0.5853546836548691,
+    0.015829105256023893,
+    -0.2840155429624281,
+    -0.00047248457399797254,
+    0.128747426620186,
+    0.01736930100202211,
+    -0.04408825393106472,
+    -0.013981027917015516,
+    0.008746094047015655,
+    0.00487035299301066,
+    -0.0003917403729959771,
+    -0.0006754494059985568,
+    -0.00011747678400228192
+    ]
+    return np.asarray(gl), np.asarray(gh)
+
+# Compute Hilbert transform of the filters G_L and G_H
+def get_hilbert_filters(gl, gh):
+    fl = ht(gl)
+    fh = ht(gh)
+    return fl, fh
+
+def get_filters():
+    gl, gh = pywt_coeffs()
+    fl, fh = get_hilbert_filters(gl, gh)
+    return gl, gh, fl, fh
+
+
+
+def reflect(x, minx, maxx):
+    """Reflect the values in matrix *x* about the scalar values *minx* and
+    *maxx*.  Hence a vector *x* containing a long linearly increasing series is
+    converted into a waveform which ramps linearly up and down between *minx* and
+    *maxx*.  If *x* contains integers and *minx* and *maxx* are (integers + 0.5), the
+    ramps will have repeated max and min samples.
+    .. codeauthor:: Rich Wareham <rjw57@cantab.net>, Aug 2013
+    .. codeauthor:: Nick Kingsbury, Cambridge University, January 1999.
+    """
+    x = np.asanyarray(x)
+    rng = maxx - minx
+    rng_by_2 = 2 * rng
+    mod = np.fmod(x - minx, rng_by_2)
+    normed_mod = np.where(mod < 0, mod + rng_by_2, mod)
+    out = np.where(normed_mod >= rng, rng_by_2 - normed_mod, normed_mod) + minx
+    return np.array(out, dtype=x.dtype)
+
+def as_column_vector( v):
+    """Return *v* as a column vector with shape (N,1).
+    """
+    v = np.atleast_2d(v)
+    if v.shape[0] == 1:
+        return v.T
+    else:
+        return v
+
+def _centered(arr, newsize):
+    # Return the center newsize portion of the array.
+    # (Shamelessly cribbed from scipy.)
+    newsize = np.asanyarray(newsize)
+    currsize = np.array(arr.shape)
+    startind = (currsize - newsize) // 2
+    endind = startind + newsize
+    myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
+    return arr[tuple(myslice)]
+
+def _column_convolve(X, h):
+    """Convolve the columns of *X* with *h* returning only the 'valid' section,
+    i.e. those values unaffected by zero padding. Irrespective of the ftype of
+    *h*, the output will have the dtype of *X* appropriately expanded to a
+    floating point type if necessary.
+    We assume that h is small and so direct convolution is the most efficient.
+    """
+    Xshape = np.asanyarray(X.shape)
+    h = h.flatten().astype(X.dtype)
+    h_size = h.shape[0]
+
+    full_size = X.shape[0] + h_size - 1
+    Xshape[0] = full_size
+
+    out = np.zeros(Xshape, dtype=X.dtype)
+    for idx in xrange(h_size):
+        out[idx:(idx+X.shape[0]),...] += X * h[idx]
+
+    outShape = Xshape.copy()
+    outShape[0] = abs(X.shape[0] - h_size) + 1
+    return _centered(out, outShape)
+
+def colfilter(X, h):
+    """Filter the columns of image *X* using filter vector *h*, without decimation.
+    If len(h) is odd, each output sample is aligned with each input sample
+    and *Y* is the same size as *X*.  If len(h) is even, each output sample is
+    aligned with the mid point of each pair of input samples, and Y.shape =
+    X.shape + [1 0].
+    :param X: an image whose columns are to be filtered
+    :param h: the filter coefficients.
+    :returns Y: the filtered image.
+    .. codeauthor:: Rich Wareham <rjw57@cantab.net>, August 2013
+    .. codeauthor:: Cian Shaffrey, Cambridge University, August 2000
+    .. codeauthor:: Nick Kingsbury, Cambridge University, August 2000
+    """
+
+    # Interpret all inputs as arrays
+#     X = asfarray(X)
+    X = np.asarray(X)
+    h = as_column_vector(h)
+
+    r, c = X.shape
+    m = h.shape[0]
+    m2 = np.fix(m*0.5)
+
+    # Symmetrically extend with repeat of end samples.
+    # Use 'reflect' so r < m2 works OK.
+    xe = reflect(np.arange(-m2, r+m2, dtype=np.int), -0.5, r-0.5)
+
+    # Perform filtering on the columns of the extended matrix X(xe,:), keeping
+    # only the 'valid' output samples, so Y is the same size as X if m is odd.
+    Y = _column_convolve(X[xe,:], h)
+
+    return Y
+
+def qwt(image, gl, gh, fl, fh, only_low=True, quad=1):
+    '''Compute the QWT. Just compute the low frequency coefficients.
+    Return L_G L_G, L_F L_G, L_G L_F, L_F L_F.'''
+
+    if only_low:
+        t1 = colfilter(image, gl)
+        # t1 = downsample(t1)
+        lglg = colfilter(t1, gl)
+        t2 = colfilter(image, fl)
+        # t2 = downsample(t2)
+        lflg = colfilter(t2, gl)
+        t3 = colfilter(image, gl)
+        # t3 = downsample(t3)
+        lglf = colfilter(t3, fl)
+        t4 = colfilter(image, fl)
+        # t4 = downsample(t4)
+        lflf = colfilter(t4, fl)
+        # lglg, lflg, lglf, lflf = t1, t2, t3, t4
+        # lglg, lflg, lglf, lflf = full_quat_downsample(lglg, lflg, lglf, lflf)
+
+        return lglg, lflg, lglf, lflf
+    else:
+        if quad==1:
+            t1 = colfilter(image, gl)
+            lglg = colfilter(t1, gl)
+            t2 = colfilter(image, gl)
+            lghg = colfilter(t2, gh)
+            t3 = colfilter(image, gh)
+            hglg = colfilter(t3, gl)
+            t4 = colfilter(image, gh)
+            hghg = colfilter(t4, gh)
+
+            return lglg, lghg, hglg, hghg
+
+        elif quad==2:
+            t1 = colfilter(image, fl)
+            lflg = colfilter(t1, gl)
+            t2 = colfilter(image, fl)
+            lfhg = colfilter(t2, gh)
+            t3 = colfilter(image, fh)
+            hflg = colfilter(t3, gl)
+            t4 = colfilter(image, fh)
+            hfhg = colfilter(t4, gh)
+
+            return lflg, lfhg, hflg, hfhg
+
+        elif quad==3:
+            t1 = colfilter(image, gl)
+            lglf = colfilter(t1, fl)
+            t2 = colfilter(image, gl)
+            lghf = colfilter(t2, fh)
+            t3 = colfilter(image, gh)
+            hglf = colfilter(t3, fl)
+            t4 = colfilter(image, gh)
+            hghf = colfilter(t4, fh)
+
+            return lglf, lghf, hglf, hghf
+        
+        elif quad==4:
+            t1 = colfilter(image, fl)
+            lflf = colfilter(t1, fl)
+            t2 = colfilter(image, fl)
+            lfhf = colfilter(t2, fh)
+            t3 = colfilter(image, fh)
+            hflf = colfilter(t3, fl)
+            t4 = colfilter(image, fh)
+            hfhf = colfilter(t4, fh)
+
+            return lflf, lfhf, hflf, hfhf
+        
+        elif quad=="all":
+            # t1 = colfilter(image, gl)
+            # lglg = colfilter(t1, gl)
+            # t2 = colfilter(image, gl)
+            # lghg = colfilter(t2, gh)
+            # t3 = colfilter(image, gh)
+            # hglg = colfilter(t3, gl)
+            # t4 = colfilter(image, gh)
+            # hghg = colfilter(t4, gh)
+
+            t1 = colfilter(image, fl)
+            t1 = downsample(t1)
+            lflg = colfilter(t1, gl)
+            t2 = colfilter(image, fl)
+            t2 = downsample(t2)
+            lfhg = colfilter(t2, gh)
+            t3 = colfilter(image, fh)
+            t3 = downsample(t3)
+            hflg = colfilter(t3, gl)
+            t4 = colfilter(image, fh)
+            t4 = downsample(t4)
+            hfhg = colfilter(t4, gh)
+
+            t1 = colfilter(image, gl)
+            t1 = downsample(t1)
+            lglf = colfilter(t1, fl)
+            t2 = colfilter(image, gl)
+            t2 = downsample(t2)
+            lghf = colfilter(t2, fh)
+            t3 = colfilter(image, gh)
+            t3 = downsample(t3)
+            hglf = colfilter(t3, fl)
+            t4 = colfilter(image, gh)
+            t4 = downsample(t4)
+            hghf = colfilter(t4, fh)
+
+            t1 = colfilter(image, fl)
+            t1 = downsample(t1)
+            lflf = colfilter(t1, fl)
+            t2 = colfilter(image, fl)
+            t2 = downsample(t2)
+            lfhf = colfilter(t2, fh)
+            t3 = colfilter(image, fh)
+            t3 = downsample(t3)
+            hflf = colfilter(t3, fl)
+            t4 = colfilter(image, fh)
+            t4 = downsample(t4)
+            hfhf = colfilter(t4, fh)
+
+            # Mean of components
+            # ll = (lglg + lflg + lglf + lflf)/2
+            # lh = (lghg + lfhg + lghf + lfhf)/2
+            # hl = (hglg + hflg + hglf + hflf)/2
+            # hh = (hghg + hfhg + hghf + hfhf)/2
+
+            ll = (lflg + lglf + lflf)/3
+            lh = (lfhg + lghf + lfhf)/3
+            hl = (hflg + hglf + hflf)/3
+            hh = (hfhg + hghf + hfhf)/3
+
+            return ll, lh, hl, hh
+
+def quat_mag_and_phase(q0, q1, q2, q3):
+    '''Compute the magnitude and phase quaternion representation.'''
+    q_mp = np.asarray([q0, q1, q2, q3])
+
+    phi = np.arctan(2*(q0+q1*q3)/(q0**2+q1**2-q2**2-q3**2))
+    theta = np.arctan((q0*q1+q2*q3)/(q0**2-q1**2+q2**2-q3**2))
+    psi = 1/2*np.arctan(2*(q0*q3-q3*q1))
+
+    phi = np.nan_to_num(phi)
+    theta = np.nan_to_num(theta)
+    psi = np.nan_to_num(psi)
+
+    q0_mag = np.linalg.norm(q_mp, axis=0, ord=2)
+    q1_phase = np.exp(phi)
+    q2_phase = np.exp(theta)
+    q3_phase = np.exp(psi)
+
+    return q0_mag, q1_phase, q2_phase, q3_phase
+
+
+def downsample(component):
+    return component[::2, ::2]
+
+def full_quat_downsample(q0, q1, q2, q3):
+    q0 = downsample(q0)
+    q1 = downsample(q1)
+    q2 = downsample(q2)
+    q3 = downsample(q3)
+    return q0, q1, q2, q3
+
+
 
 
 class ChaosDataset_Syn_Test(Dataset):

@@ -11,3 +11,5 @@ torchvision
 tqdm
 wandb
 pywavelets
+scipy
+imageio
