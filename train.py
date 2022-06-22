@@ -276,7 +276,7 @@ def train(args):
                 save_state_net(nets.netH, args, i + 1, optims.h_optimizier)
 
             if (i + 1) == args.epoch:
-                fidstar, fid, dice, ravd, s_score, fid_giov = calculate_all_metrics(nets,
+                fidstar, fid, dice, ravd, s_score, fid_giov, iou_dict, IS_ignite_dict, fid_ignite_dict = calculate_all_metrics(nets,
                                                                                     syneval_dataset,
                                                                                     syneval_dataset2,
                                                                                     syneval_dataset3,
@@ -284,9 +284,12 @@ def train(args):
                 wandb.log(dict(fidstar), step=ii + 1, commit=False)
                 wandb.log(dict(fid), step=ii + 1, commit=False)
                 wandb.log(dict(fid_giov), step=ii + 1, commit=False)
+                wandb.log(dict(IS_ignite_dict), step=ii + 1, commit=False)
+                wandb.log(dict(fid_ignite_dict), step=ii + 1, commit=False)
 
                 wandb.log(dict(dice), step=ii + 1, commit=False)
                 wandb.log(dict(ravd), step=ii + 1, commit=False)
+                wandb.log(dict(iou_dict), step=ii + 1, commit=False)
                 wandb.log(dict(s_score), step=ii + 1, commit=True)
             if (i + 1) % 1 == 0:
                 elapsed = time.time() - start_time

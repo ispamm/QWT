@@ -22,8 +22,10 @@ from sklearn.neighbors import KDTree
 from scipy import linalg
 from torchvision import models
 import subprocess
+from ignite.metrics import FID, InceptionScore
 
-def calculate_fid():
+
+def calculate_pytorch_fid():
     if "50" in args.png_dataset_path:
         path_real = [args.dataset_path + "png5050/train/ct", args.dataset_path + "png5050/train/t1",
                      args.dataset_path + "png5050/train/t2"]
@@ -46,6 +48,83 @@ def calculate_fid():
             fid_scores["FID/" + src + " to " + p[-2:]] = float(x)
             ls += float(x)
         fid_scores["FID/" + p[-2:] + "_mean"] = ls / len(mod)
+    return fid_scores
+
+
+def fid_ignite(true, pred):
+    fid = FID()
+    pred = torch.from_numpy(pred)
+    true = torch.from_numpy(true)
+    if len(pred.shape) != 4:
+        pred = pred.unsqueeze(1)
+    if pred.size(1) != 3:
+        pred = pred.repeat(1, 3, 1, 1)
+
+    if len(true.shape) != 4:
+        true = true.unsqueeze(1)
+    if true.size(1) != 3:
+        true = true.repeat(1, 3, 1, 1)
+    print(pred.shape, "AO",true.shape)
+    fid.update([pred, true])
+
+    valid_fid = fid.compute()
+    return valid_fid
+
+
+def inception_score_ignite(pred):
+    metric = InceptionScore()
+    pred = torch.from_numpy(pred)
+    if len(pred.shape) != 4:
+        pred = pred.unsqueeze(1)
+    if pred.size(1) != 3:
+        pred = pred.repeat(1, 3, 1, 1)
+    # true_torch = torch.from_numpy(true).unsqueeze(1).repeat(1, 3, 1, 1)
+    metric.update(pred)
+
+    valid_is = metric.compute()
+    return valid_is
+
+
+
+def calculate_ignite_fid():
+    path_real = [args.dataset_path + "png8020/train/ct", args.dataset_path + "png8020/train/t1",
+                 args.dataset_path + "png8020/train/t2"]
+    eval_root = "eval/"
+    fid_scores = {}
+    for p in path_real:
+        mod = [m for m in args.modals if m != p[-2:]]
+        ls = 0
+        for src in mod:
+            print("evaluating " + src + " to " + p[-2:])
+            eval_path = eval_root + src + " to " + p[-2:]
+            true, pred = png_series_reader(p), png_series_reader(eval_path)
+            if pred.shape[0] < true.shape[0]:
+                x = fid_ignite(true[:pred.shape[0], ], pred)
+            else:
+                x = fid_ignite(true, pred[:true.shape[0],])
+
+            fid_scores["FID-ignite/" + src + " to " + p[-2:]] = float(x)
+            ls += float(x)
+        fid_scores["FID-ignite/" + p[-2:] + "_mean"] = ls / len(mod)
+    return fid_scores
+
+
+def calculate_ignite_inception_score():
+    path_real = [args.dataset_path + "png8020/train/ct", args.dataset_path + "png8020/train/t1",
+                 args.dataset_path + "png8020/train/t2"]
+    eval_root = "eval/"
+    fid_scores = {}
+    for p in path_real:
+        mod = [m for m in args.modals if m != p[-2:]]
+        ls = 0
+        for src in mod:
+            print("evaluating " + src + " to " + p[-2:])
+            eval_path = eval_root + src + " to " + p[-2:]
+            pred = png_series_reader(eval_path)
+            x = inception_score_ignite(pred)
+            fid_scores["IS-ignite/" + src + " to " + p[-2:]] = float(x)
+            ls += float(x)
+        fid_scores["IS/" + p[-2:] + "_mean"] = ls / len(mod)
     return fid_scores
 
 
@@ -124,12 +203,12 @@ def calculate_metrics(nets, args, step, mode, syneval_dataset, syneval_dataset2,
                                                 '%.4i_%.2i.png' % (i * args.eval_batch_size + (k + 1), j + 1))
                         save_image(x_fake[k], ncol=1, filename=filename)
 
-                lpips_value = calculate_lpips_given_images(group_of_images)
-                lpips_values.append(lpips_value)
+                # lpips_value = calculate_lpips_given_images(group_of_images)
+                # lpips_values.append(lpips_value)
             # print(lpips_values)
             # calculate LPIPS for each task (e.g. cat2dog, dog2cat)
-            lpips_mean = np.array(lpips_values).mean()
-            lpips_dict['LPIPS_%s/%s' % (mode, task)] = lpips_mean
+            # lpips_mean = np.array(lpips_values).mean()
+            # lpips_dict['LPIPS_%s/%s' % (mode, task)] = lpips_mean
 
         # delete dataloaders
         del loader_src
@@ -138,16 +217,16 @@ def calculate_metrics(nets, args, step, mode, syneval_dataset, syneval_dataset2,
             del iter_ref
 
     # calculate the average LPIPS for all tasks
-    lpips_mean = 0
-    for _, value in lpips_dict.items():
-        lpips_mean += value / len(lpips_dict)
-    lpips_dict['LPIPS_%s/mean' % mode] = lpips_mean
+    # lpips_mean = 0
+    # for _, value in lpips_dict.items():
+    #     lpips_mean += value / len(lpips_dict)
+    # lpips_dict['LPIPS_%s/mean' % mode] = lpips_mean
 
     # report LPIPS values
-    filename = os.path.join(args.eval_dir, 'LPIPS_%.5i_%s.json' % (step, mode))
-    save_json(lpips_dict, filename)
+    # filename = os.path.join(args.eval_dir, 'LPIPS_%.5i_%s.json' % (step, mode))
+    # save_json(lpips_dict, filename)
     # calculate and report fid values
-    return lpips_dict, calculate_fid_for_all_tasks(args, domains, step=step, mode=mode)
+    return lpips_dict, {}  # calculate_fid_for_all_tasks(args, domains, step=step, mode=mode)
 
 
 def normalize_lpips(x, eps=1e-10):
@@ -453,14 +532,15 @@ def png_series_reader(dir):
     return V
 
 
-def eval_dice_or_s_score(nets, idx_eval, syneval_loader, dice_=False):
+def create_images_for_dice_or_s_score(nets, idx_eval, syneval_loader, dice_=False):
     shutil.rmtree("Segmentation", ignore_errors=True)
     shutil.rmtree("Ground", ignore_errors=True)
     os.makedirs("Segmentation")
     os.makedirs("Ground")
     plotted = 0
-    for epoch, ((x_real,wavelet_real), (t_img,wavelet_target), shape_mask, mask, label_org) in tqdm(enumerate(syneval_loader),
-                                                                    total=len(syneval_loader)):
+    for epoch, ((x_real, wavelet_real), (t_img, wavelet_target), shape_mask, mask, label_org) in tqdm(
+            enumerate(syneval_loader),
+            total=len(syneval_loader)):
         rand_idx = torch.randperm(label_org.size(0))
         # label_trg = label_org[rand_idx]
         c_org = label2onehot(label_org, args.c_dim)
@@ -531,7 +611,7 @@ def eval_dice_or_s_score(nets, idx_eval, syneval_loader, dice_=False):
             filename = os.path.join("Ground",
                                     '%.4i_%.2i.png' % (args.sepoch * args.eval_batch_size + (k + 1), epoch + 1))
             if t_img.size(1) == 5:
-                t_img = t_img[:,:1]
+                t_img = t_img[:, :1]
 
             save_image(t_img[k], ncol=1, filename=filename)
 
@@ -704,6 +784,7 @@ def metrics_giovanni():
     #         optimizer.step()
     return target_model
 
+
 def frechet_distance(mu, cov, mu2, cov2):
     cc, _ = linalg.sqrtm(np.dot(cov, cov2), disp=False)
     dist = np.sum((mu - mu2) ** 2) + np.trace(cov + cov2 - 2 * cc)
@@ -738,6 +819,7 @@ def _thresh(img):
     img[img <= 0.5] = 0
     return img
 
+
 def IoU(y_pred, y_true):
     y_pred = _thresh(y_pred)
     y_true = _thresh(y_true)
@@ -748,6 +830,7 @@ def IoU(y_pred, y_true):
         return 0 if np.any(y_pred) else 1
     iou = intersection.sum() / float(union.sum())
     return iou, np.mean(iou)
+
 
 def compute_miou(validation_pred, validation_true):
     # Compute mIoU         
@@ -767,24 +850,29 @@ def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_datas
                                        syneval_dataset,
                                        syneval_dataset2,
                                        syneval_dataset3)
-    if fid_png:
-        fid_dict = calculate_fid()
-    else:
-        fid_dict = {}
+    try:
+        fid_dict = calculate_pytorch_fid()
+        fid_ignite_dict = calculate_ignite_fid()
+        IS_ignite_dict = calculate_ignite_inception_score()
+    except Exception as e:
+        print("Error ----->>>" ,e)
+        fid_dict, fid_ignite_dict, IS_ignite_dict = {}, {}, {}
+
     mod = ["t1", "t2", "ct"]
     fid_giov = calculate_FID_Giov(nets, args, args.sepoch, '',
                                   syneval_dataset,
                                   syneval_dataset2,
                                   syneval_dataset3)
-    dice_dict, ravd_dict, s_score_dict = {}, {}, {}
-    for i in range(3):
+    dice_dict, ravd_dict, s_score_dict, iou_dict = {}, {}, {}, {}
+
+    for i in range(3):  # 3 domains
         # ======= Directories =======
         cwd = os.path.normpath(os.getcwd() + os.sep + os.pardir)
         ground_dir = os.path.normpath('Ground')
         seg_dir = os.path.normpath('Segmentation')
         dicom_dir = os.path.normpath(cwd + '/Data_3D/DICOM_anon')
 
-        eval_dice_or_s_score(nets, i, syneval_loader,True)
+        create_images_for_dice_or_s_score(nets, i, syneval_loader, True)
         # ======= Volume Reading =======
         Vref = png_series_reader(ground_dir)
         Vseg = png_series_reader(seg_dir)
@@ -795,8 +883,11 @@ def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_datas
         dice_dict["DICE/" + mod[i]] = dice
         ravd_dict["RAVD/" + mod[i]] = ravd
 
+        iou = compute_miou(Vref, Vseg)
+        iou_dict["IoU/" + mod[i]] = dice
+
         # calculate s score
-        eval_dice_or_s_score(nets, i, syneval_loader, False)
+        create_images_for_dice_or_s_score(nets, i, syneval_loader, False)
         # ======= Volume Reading =======
         Vref = png_series_reader(ground_dir)
         Vseg = png_series_reader(seg_dir)
@@ -807,11 +898,8 @@ def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_datas
         #     print('DICE=%.3f RAVD=%.3f ' %(dice, ravd))
         # else:
         #     print('S-score = %.3f' %(dice))
-    Vref = png_series_reader(ground_dir)
-    Vseg = png_series_reader(seg_dir)
-    iou = compute_miou(Vref, Vseg)
 
-    return fid_stargan, fid_dict, dice_dict, ravd_dict, s_score_dict, fid_giov, iou
+    return fid_stargan, fid_dict, dice_dict, ravd_dict, s_score_dict, fid_giov, iou_dict, IS_ignite_dict, fid_ignite_dict
 
 
 def evaluation():
@@ -824,25 +912,28 @@ def evaluation():
     syneval_dataset4 = ChaosDataset_Syn_new(path=args.dataset_path, split='test', modals=args.modals,
                                             image_size=args.image_size)
     syneval_loader = DataLoader(syneval_dataset4, batch_size=args.batch_size,
-                                shuffle=True if args.mode != "sample" else False, collate_fn=None )#if (
-                # args.real or (not args.real and args.soup)) else convert_data_for_quaternion_tarGAN)
-    ii = args.sepoch*650
+                                shuffle=True if args.mode != "sample" else False, collate_fn=None)  # if (
+    # args.real or (not args.real and args.soup)) else convert_data_for_quaternion_tarGAN)
+    ii = args.sepoch * 650
     nets, disc_c_dim = build_model()
     load_nets(nets)
     with wandb.init(config=args, project="quattargan") as run:
         wandb.run.name = args.experiment_name
-        fidstar,fid,dice,ravd,s_score,fid_giov,iou = calculate_all_metrics(nets, 
-                                                                        syneval_dataset, 
-                                                                        syneval_dataset2, 
-                                                                        syneval_dataset3, 
-                                                                        syneval_loader, 
-                                                                        fid_png=False)
-        # fid = calculate_fid()
-        
-        wandb.log(dict(fid),step=ii+1,commit=False)
-        wandb.log(dict(fid_giov),step=ii+1,commit=False)
-        wandb.log(dict(fidstar),step=ii+1,commit=False)
-        wandb.log(dict(dice),step=ii+1,commit=False)
-        wandb.log(dict(ravd),step=ii+1,commit=False)
-        wandb.log(dict(s_score),step=ii+1,commit=False)
-        wandb.log({"Validation IoU": iou},commit=True)
+        fidstar, fid, dice, ravd, s_score, fid_giov, iou_dict, IS_ignite_dict, fid_ignite_dict = calculate_all_metrics(
+            nets,
+            syneval_dataset,
+            syneval_dataset2,
+            syneval_dataset3,
+            syneval_loader,
+            fid_png=False)
+        # fid = calculate_pytorch_fid()
+
+        wandb.log(dict(fid), step=ii + 1, commit=False)
+        wandb.log(dict(fid_giov), step=ii + 1, commit=False)
+        wandb.log(dict(fidstar), step=ii + 1, commit=False)
+        wandb.log(dict(dice), step=ii + 1, commit=False)
+        wandb.log(dict(ravd), step=ii + 1, commit=False)
+        wandb.log(dict(s_score), step=ii + 1, commit=False)
+        wandb.log(dict(IS_ignite_dict), step=ii + 1, commit=False)
+        wandb.log(dict(fid_ignite_dict), step=ii + 1, commit=False)
+        wandb.log(iou_dict, commit=True)

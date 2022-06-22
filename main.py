@@ -1,9 +1,11 @@
+import os
+
 import torch
 import random
 import numpy as np
 
 from config import args
-from metrics import compute_miou, evaluation, png_series_reader
+from metrics import evaluation, calculate_ignite_inception_score
 from train import train
 from sample import sample
 
@@ -28,6 +30,8 @@ if __name__ == '__main__':
     if args.mode == "train":
         train(args)
     if args.mode == "eval":
+        #os.environ["CUDA_VISIBLE_DEVICES"] = "3"
         evaluation()
+
     if args.mode == "sample":
         sample()

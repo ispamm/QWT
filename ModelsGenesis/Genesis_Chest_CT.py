@@ -3,15 +3,20 @@
 
 
 import warnings
+
+import numpy as np
+
+from ModelsGenesis.utils import generate_pair
+
 warnings.filterwarnings('ignore')
 from torch import nn
 import torch
 from torchsummary import summary
 import sys
 import unet3d
-from ModelsGenesis.pytorch.config import models_genesis_config
+from ModelsGenesis.config import models_genesis_config
 from tqdm import tqdm
-
+import os
 print("torch = {}".format(torch.__version__))
 
 
@@ -57,7 +62,7 @@ if conf.optimizer == "sgd":
 elif conf.optimizer == "adam":
 	optimizer = torch.optim.Adam(model.parameters(), conf.lr)
 else:
-	raise
+	raise Exception
 
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=int(conf.patience * 0.8), gamma=0.5)
 
