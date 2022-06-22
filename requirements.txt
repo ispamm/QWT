@@ -13,3 +13,4 @@ wandb
 pywavelets
 scipy
 imageio
+pytorch-fid

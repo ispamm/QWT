@@ -21,7 +21,7 @@ from scipy import ndimage
 from sklearn.neighbors import KDTree
 from scipy import linalg
 from torchvision import models
-
+import subprocess
 
 def calculate_fid():
     if "50" in args.png_dataset_path:
@@ -31,7 +31,7 @@ def calculate_fid():
         path_real = [args.dataset_path + "png8020/train/ct", args.dataset_path + "png8020/train/t1",
                      args.dataset_path + "png8020/train/t2"]
 
-    eval_root = "/content/drive/MyDrive/Thesis/TarGAN/eval/"
+    eval_root = "eval/"
     fid_scores = {}
     for p in path_real:
         mod = [m for m in args.modals if m != p[-2:]]
@@ -39,9 +39,10 @@ def calculate_fid():
         for src in mod:
             print("evaluating " + src + " to " + p[-2:])
             eval_path = eval_root + src + " to " + p[-2:]
-            x = os.system(
-                f'python -m pytorch_fid "{p}" "{eval_path}" --device "cuda:0" --batch-size {args.eval_batch_size}')
-            x = x[-1].replace("FID:  ", "")
+            x = str(subprocess.check_output(
+                f'python -m pytorch_fid "{p}" "{eval_path}" --device "cuda:"{str(args.gpu_num)} --batch-size {args.eval_batch_size}',
+                shell=True))
+            x = x.split(' ')[-1][:-3]
             fid_scores["FID/" + src + " to " + p[-2:]] = float(x)
             ls += float(x)
         fid_scores["FID/" + p[-2:] + "_mean"] = ls / len(mod)
@@ -145,7 +146,6 @@ def calculate_metrics(nets, args, step, mode, syneval_dataset, syneval_dataset2,
     # report LPIPS values
     filename = os.path.join(args.eval_dir, 'LPIPS_%.5i_%s.json' % (step, mode))
     save_json(lpips_dict, filename)
-
     # calculate and report fid values
     return lpips_dict, calculate_fid_for_all_tasks(args, domains, step=step, mode=mode)
 
@@ -733,6 +733,35 @@ def calculate_FID_Giovanni_given_images(group_of_images, ground_of_images):
     return fid_value
 
 
+def _thresh(img):
+    img[img > 0.5] = 1
+    img[img <= 0.5] = 0
+    return img
+
+def IoU(y_pred, y_true):
+    y_pred = _thresh(y_pred)
+    y_true = _thresh(y_true)
+
+    intersection = np.logical_and(y_pred, y_true)
+    union = np.logical_or(y_pred, y_true)
+    if not np.any(union):
+        return 0 if np.any(y_pred) else 1
+    iou = intersection.sum() / float(union.sum())
+    return iou, np.mean(iou)
+
+def compute_miou(validation_pred, validation_true):
+    # Compute mIoU         
+    validation_pred_np = np.asarray(validation_pred)
+    validation_true_np = np.asarray(validation_true)
+    # validation_pred_torch = torch.from_numpy(validation_pred_np)
+    # validation_true_torch = torch.from_numpy(validation_true_np)
+    # print("Val pred", validation_pred_torch.shape)
+    # print("Val true", validation_true_torch.shape)
+    iou, miou = IoU(validation_pred_np, validation_true_np)
+
+    return iou
+
+
 def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_dataset3, syneval_loader, fid_png=False):
     _, fid_stargan = calculate_metrics(nets, args, args.sepoch, '',
                                        syneval_dataset,
@@ -778,8 +807,11 @@ def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_datas
         #     print('DICE=%.3f RAVD=%.3f ' %(dice, ravd))
         # else:
         #     print('S-score = %.3f' %(dice))
+    Vref = png_series_reader(ground_dir)
+    Vseg = png_series_reader(seg_dir)
+    iou = compute_miou(Vref, Vseg)
 
-    return fid_stargan, fid_dict, dice_dict, ravd_dict, s_score_dict, fid_giov
+    return fid_stargan, fid_dict, dice_dict, ravd_dict, s_score_dict, fid_giov, iou
 
 
 def evaluation():
@@ -799,16 +831,18 @@ def evaluation():
     load_nets(nets)
     with wandb.init(config=args, project="quattargan") as run:
         wandb.run.name = args.experiment_name
-        fidstar,fid,dice,ravd,s_score,fid_giov = calculate_all_metrics(nets, 
+        fidstar,fid,dice,ravd,s_score,fid_giov,iou = calculate_all_metrics(nets, 
                                                                         syneval_dataset, 
                                                                         syneval_dataset2, 
                                                                         syneval_dataset3, 
                                                                         syneval_loader, 
                                                                         fid_png=False)
-        wandb.log(dict(fidstar),step=ii+1,commit=False)
+        # fid = calculate_fid()
+        
         wandb.log(dict(fid),step=ii+1,commit=False)
         wandb.log(dict(fid_giov),step=ii+1,commit=False)
-
+        wandb.log(dict(fidstar),step=ii+1,commit=False)
         wandb.log(dict(dice),step=ii+1,commit=False)
         wandb.log(dict(ravd),step=ii+1,commit=False)
-        wandb.log(dict(s_score),step=ii+1,commit=True)
+        wandb.log(dict(s_score),step=ii+1,commit=False)
+        wandb.log({"Validation IoU": iou},commit=True)

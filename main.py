@@ -3,7 +3,7 @@ import random
 import numpy as np
 
 from config import args
-from metrics import evaluation
+from metrics import compute_miou, evaluation, png_series_reader
 from train import train
 from sample import sample
 
