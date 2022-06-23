@@ -64,7 +64,6 @@ def fid_ignite(true, pred):
         true = true.unsqueeze(1)
     if true.size(1) != 3:
         true = true.repeat(1, 3, 1, 1)
-    print(pred.shape, "AO",true.shape)
     fid.update([pred, true])
 
     valid_fid = fid.compute()
@@ -704,7 +703,7 @@ def calculate_FID_Giov(nets, args, step, mode,
             # calculate LPIPS for each task (e.g. cat2dog, dog2cat)
             lpips_mean = np.array(lpips_values).mean()
             lpips_dict['FID_giov_%s/%s' % (mode, task)] = lpips_mean
-
+        
         # delete dataloaders
         del loader_src
         if mode == 'test':
@@ -884,7 +883,7 @@ def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_datas
         ravd_dict["RAVD/" + mod[i]] = ravd
 
         iou = compute_miou(Vref, Vseg)
-        iou_dict["IoU/" + mod[i]] = dice
+        iou_dict["IoU/" + mod[i]] = iou
 
         # calculate s score
         create_images_for_dice_or_s_score(nets, i, syneval_loader, False)

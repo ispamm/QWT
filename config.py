@@ -7,12 +7,13 @@ real = False  # @param ["True", "False"] {type:"raw"}
 soup = False  # @param ["True", "False"] {type:"raw"}
 share_net_real = True  # @param ["True", "False"] {type:"raw"}
 last_layer_gen_real = True  # @param ["True", "False"] {type:"raw"}
-wavelet_disc_gen = (False, False) 
+wavelet_disc_gen = (False, True, False) 
+wavelet_target =False
 wavelet_type = "real" #@param ["real", "quat"]
 spectral = True
-experiment_name = "quat-server"  # @param {type:"string"}
-mode = "eval"  # @param ["train", "eval","sample"]
-sepoch = 50  # @param {type:"integer"}
+experiment_name = "wavelet_real_only_img_gen"  # @param {type:"string"}
+mode = "train"  # @param ["train", "eval","sample"]
+sepoch = 0  # @param {type:"integer"}
 gpu_num = 0
 
 args = munch.Munch({
@@ -60,6 +61,7 @@ args = munch.Munch({
     "share_net_real": share_net_real,
     "wavelet_disc_gen": wavelet_disc_gen,
     "wavelet_type": wavelet_type,
+    'wavelet_target':wavelet_target,
     "spectral" : spectral,
     "seed": 888,
     "gpu_num": gpu_num

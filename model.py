@@ -299,7 +299,10 @@ class Discriminator(nn.Module):
                 layers.append(QuaternionConv(4, conv_dim, kernel_size=4, stride=2, padding=1))
             # layers.append(nn.Conv2d(1, conv_dim, kernel_size=4, stride=2, padding=1))
         elif args.real:
-            layers.append(nn.Conv2d(1, conv_dim, kernel_size=4, stride=2, padding=1))
+            if args.spectral:
+                layers.append(spectral_norm(nn.Conv2d(1, conv_dim, kernel_size=4, stride=2, padding=1)))
+            else:
+                layers.append(nn.Conv2d(1, conv_dim, kernel_size=4, stride=2, padding=1))
 
         layers.append(nn.LeakyReLU(0.01))
 
@@ -313,7 +316,10 @@ class Discriminator(nn.Module):
                 else:
                     layers.append(QuaternionConv(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1))
             elif args.real:
-                layers.append(nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1))
+                if args.spectral:
+                    layers.append(spectral_norm(nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1)))
+                else:
+                    layers.append(nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1))
 
             layers.append(nn.LeakyReLU(0.01))
             curr_dim = curr_dim * 2
@@ -341,8 +347,12 @@ class Discriminator(nn.Module):
                 self.conv2 = QuaternionConv(in_channels=curr_dim, out_channels=c_dim, kernel_size=kernel_size, stride=1,
                                             bias=False)
         elif args.real:
-            self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
-            self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
+            if args.spectral:
+                self.conv1 = spectral_norm(nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False))
+                self.conv2 = spectral_norm(nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False))
+            else:
+                self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
+                self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
 
         if args.last_layer_gen_real:
             if args.spectral:
@@ -375,10 +385,13 @@ class Discriminator(nn.Module):
             #h = self.main(torch.randn(1, 4, 64, 64).requires_grad_(x_real.requires_grad))
 
             # print('disc - img1', x.requires_grad)
-        elif x_real.size(1) == 1:
+        elif x_real.size(1) == 1 and not args.real:
             x = x_real.repeat(1, 3, 1, 1)
             x = torch.cat([x, grayscale(x)], 1)
             h = self.main(x)
+        elif args.real:
+            h = self.main(x_real)
+
         # elif inputs.size(1) == 4:
         #     x = inputs.clone().detach()
         # print("discriminatore dopo main",h.shape) #torch.Size([4, 2048, 2, 2])
@@ -412,7 +425,10 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.img_encoder = Encoder(in_c, mid_c, layers, affine)
         self.img_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
-        self.target_encoder = Encoder(in_c, mid_c, layers, affine)
+        if args.wavelet_target:
+            self.target_encoder = Encoder(in_c, mid_c, layers, affine)
+        else:
+            self.target_encoder = Encoder(4, mid_c, layers, affine)
         self.target_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
         self.share_net = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
                                   256)
@@ -470,7 +486,7 @@ class Generator(nn.Module):
             #    tumor_target_wavelet = torch.cat([tumor_target, wavelet_tumor], dim=1)
             # print('gen tum- img5')
 
-            if tumor.size(1) == 1 and args.wavelet_disc_gen[1]:
+            if tumor.size(1) == 1 and args.wavelet_target:
                 tumor_target = torch.cat([tumor_target, create_wavelet_from_input_tensor(tumor)], dim=1)
                 #tumor_target = torch.cat([tumor_target, torch.randn(1, 4, 64, 64).requires_grad_(tumor.requires_grad)],dim=1)
 
@@ -559,9 +575,9 @@ class ShapeUNet(nn.Module):
         #     x = x.repeat(1, 3, 1, 1)
         #     x = torch.cat([x, grayscale(x)], 1)
         # wavelet
-        if x.size(1) == 1 and args.wavelet_disc_gen[1]:
+        if x.size(1) == 1 and args.wavelet_disc_gen[2]:
             x = create_wavelet_from_input_tensor(x)
-        elif x.size(1) == 1:
+        elif x.size(1) == 1 and (not args.real and not args.wavelet_disc_gen[1]):
             x = x.repeat(1, 3, 1, 1)
             x = torch.cat([x, grayscale(x)], 1)
         x1 = self.Conv1(x)

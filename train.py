@@ -137,16 +137,14 @@ def train(args):
                                                                   reduction='sum') / out_f_cls.size(0)
 
                 # Compute loss for gradient penalty.
-                #alpha = torch.rand(x_real.size(0), 1, 1, 1).to(device)
+                d_loss_gp=0
+                if not args.spectral:
+                    alpha = torch.rand(x_real.size(0), 1, 1, 1).to(device)
 
-                #x_hat = (alpha * x_real.data + (1 - alpha) * x_fake.data).requires_grad_(True)
+                    x_hat = (alpha * x_real.data + (1 - alpha) * x_fake.data).requires_grad_(True)
 
-                #out_src, _ = nets.netD_i(x_hat)
-                # from torchviz import make_dot
-
-                # make_dot(out_src, params=dict(nets.netD_i.named_parameters()), show_attrs=True, show_saved=True).render("rnn_torchviz", format="png")
-                #d_loss_gp = gradient_penalty(out_src, x_hat, device)
-
+                    out_src, _ = nets.netD_i(x_hat)
+                    d_loss_gp = gradient_penalty(out_src, x_hat, device)
                 # compute loss with target images
                 if index.shape[0] != 0:
                     out_src, out_cls = nets.netD_t(torch.index_select(t_img, dim=0, index=index))#, wavelets_target)
@@ -166,21 +164,22 @@ def train(args):
                     d_loss_fake_t = torch.mean(out_src)
                     d_loss_f_cls_t = F.binary_cross_entropy_with_logits(out_f_cls, d_false_org,
                                                                         reduction='sum') / out_f_cls.size(0)
+                    d_loss_gp_t = 0
+                    if not args.spectral:
+                        x_hat = (alpha * t_img.data + (1 - alpha) * t_fake.data).requires_grad_(True)
 
-                    #x_hat = (alpha * t_img.data + (1 - alpha) * t_fake.data).requires_grad_(True)
+                        x_hat = torch.index_select(x_hat, dim=0, index=index)
+                        out_src, _ = nets.netD_t(x_hat)
+                        d_loss_gp_t = gradient_penalty(out_src, x_hat, device)
 
-                    #x_hat = torch.index_select(x_hat, dim=0, index=index)
-                    #out_src, _ = nets.netD_t(x_hat)
-                    #d_loss_gp_t = gradient_penalty(out_src, x_hat, device)
-
-                    dt_loss = d_loss_real_t + d_loss_fake_t + d_loss_cls_t + d_loss_f_cls_t * args.w_d_false_t_c# + d_loss_gp_t * 10
+                    dt_loss = d_loss_real_t + d_loss_fake_t + d_loss_cls_t + d_loss_f_cls_t * args.w_d_false_t_c + d_loss_gp_t * 10
                     w_dt = (-d_loss_real_t - d_loss_fake_t).item()
                 else:
                     dt_loss = torch.FloatTensor([0]).to(device)
                     w_dt = 0
                     d_loss_f_cls_t = torch.FloatTensor([0]).to(device)
                 # Backward and optimize.
-                di_loss = d_loss_real + d_loss_fake + d_loss_cls + d_loss_f_cls * args.w_d_false_c # +d_loss_gp * 10
+                di_loss = d_loss_real + d_loss_fake + d_loss_cls + d_loss_f_cls * args.w_d_false_c +d_loss_gp * 10
                 d_loss = di_loss + dt_loss
                 w_di = (-d_loss_real - d_loss_fake).item()
 
