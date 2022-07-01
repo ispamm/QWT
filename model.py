@@ -286,9 +286,8 @@ DISCRIMINATOR
 class Discriminator(nn.Module):
     # the D_x or D_r of TarGAN ( backbone of PatchGAN )
 
-    def __init__(self, image_size=256, conv_dim=64, c_dim=5, repeat_num=6):
+    def __init__(self, image_size=256, conv_dim=64, c_dim=5, repeat_num=6, target=False):
         super(Discriminator, self).__init__()
-        print(args.real)
         layers = []
         if args.phm:
             layers.append(PHMConv(4, 4, conv_dim, kernel_size=4, stride=2, padding=1))
@@ -362,6 +361,7 @@ class Discriminator(nn.Module):
                 self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
                 self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
 
+        self.target = target
     def forward(self, x_real, wavelets=torch.zeros(1)):
         # print("discriminatore in entrata", x.shape) #torch.Size([4, 1, 128, 128])
         # rgb + aalpha
@@ -381,15 +381,15 @@ class Discriminator(nn.Module):
             #     create_wavelet_from_input_tensor(x_real)[:,1:]
             #     ], dim=1).to(device)
             #     )
-            h = self.main(create_wavelet_from_input_tensor(x_real))
+            h = self.main(torch.cat([x_real,create_wavelet_from_input_tensor(x_real)[:,:3]], dim=1).to(device))
             #h = self.main(torch.randn(1, 4, 64, 64).requires_grad_(x_real.requires_grad))
 
             # print('disc - img1', x.requires_grad)
-        elif x_real.size(1) == 1 and not args.real:
+        elif x_real.size(1) == 1 and (not args.real and not self.target):
             x = x_real.repeat(1, 3, 1, 1)
             x = torch.cat([x, grayscale(x)], 1)
             h = self.main(x)
-        elif args.real:
+        elif args.real or (self.target and args.target_real):
             h = self.main(x_real)
 
         # elif inputs.size(1) == 4:
@@ -425,13 +425,21 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.img_encoder = Encoder(in_c, mid_c, layers, affine)
         self.img_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
+        self.share_net = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
+                                  256)
         if args.wavelet_target:
             self.target_encoder = Encoder(in_c, mid_c, layers, affine)
         else:
             self.target_encoder = Encoder(4, mid_c, layers, affine)
+        if args.target_real:
+            args.real = True
+            args.qsn = False
         self.target_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
-        self.share_net = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
+        self.share_net_2 = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
                                   256)
+        if args.target_real:
+            args.real = False
+            args.qsn = True
         if args.phm and not args.last_layer_gen_real:
             self.out_img = PHMConv(4, mid_c, 4, 1, bias=bias)
             self.out_tumor = PHMConv(4, mid_c, 4, 1, bias=bias)
@@ -494,7 +502,7 @@ class Generator(nn.Module):
 
             x_2 = self.target_encoder(tumor_target)
 
-            s_2 = self.share_net(x_2)
+            s_2 = self.share_net_2(x_2)
             res_tumor = self.out_tumor(self.target_decoder(s_2, x_2))
             if self.last_ac:
                 res_tumor = torch.tanh(res_tumor)

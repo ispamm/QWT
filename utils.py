@@ -182,11 +182,21 @@ def build_model():
     netG = Generator(in_c=channels + args.c_dim, mid_c=args.G_conv, layers=2, s_layers=3, affine=True, last_ac=True).to(
         device)
 
-    shape_net_channels = 4 if not args.real and args.wavelet_disc_gen[2] else 1
-    netH = ShapeUNet(img_ch=shape_net_channels, mid=args.h_conv, output_ch=shape_net_channels).to(device)
+
 
     netD_i = Discriminator(c_dim=disc_c_dim, image_size=args.image_size).to(device)
-    netD_t = Discriminator(c_dim=disc_c_dim, image_size=args.image_size).to(device)
+    if args.target_real:
+        args.qsn= False
+        args.real = True
+        shape_net_channels = 4 if not args.real and args.wavelet_disc_gen[2] else 1
+        netH = ShapeUNet(img_ch=shape_net_channels, mid=args.h_conv, output_ch=shape_net_channels).to(device)
+        netD_t = Discriminator(c_dim=disc_c_dim, image_size=args.image_size, target = True).to(device)
+        args.real = False
+        args.qsn = True
+    else:
+        shape_net_channels = 4 if not args.real and args.wavelet_disc_gen[2] else 1
+        netH = ShapeUNet(img_ch=shape_net_channels, mid=args.h_conv, output_ch=shape_net_channels).to(device)
+        netD_t = Discriminator(c_dim=disc_c_dim, image_size=args.image_size).to(device)
 
     netG_use = copy.deepcopy(netG)
     netG.to(device)
