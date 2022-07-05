@@ -178,7 +178,7 @@ def build_model():
     else:
         #wavelets
         disc_c_dim = 6
-    channels = 5 if (not args.real and not args.soup and args.wavelet_disc_gen[1]) else 1
+    channels = 5 if (not args.real and not args.soup and args.wavelet_disc_gen[1] and not args.wavelet_net) else 1
     netG = Generator(in_c=channels + args.c_dim, mid_c=args.G_conv, layers=2, s_layers=3, affine=True, last_ac=True).to(
         device)
 
@@ -198,6 +198,17 @@ def build_model():
         netH = ShapeUNet(img_ch=shape_net_channels, mid=args.h_conv, output_ch=shape_net_channels).to(device)
         netD_t = Discriminator(c_dim=disc_c_dim, image_size=args.image_size).to(device)
 
+    if args.shape_network_sep_target:
+        if args.target_real:
+            args.qsn= False
+            args.real = True
+        netH_t = ShapeUNet(img_ch=shape_net_channels, mid=args.h_conv, output_ch=shape_net_channels).to(device)
+        if args.target_real:
+            args.real = False
+            args.qsn = True
+    else:
+        netH_t = None
+
     netG_use = copy.deepcopy(netG)
     netG.to(device)
     netD_i.to(device)
@@ -208,6 +219,7 @@ def build_model():
                         "netD_i": netD_i,
                         "netD_t": netD_t,
                         "netH": netH,
+                        "netH_t": netH_t,
                         "netG_use": netG_use})
     return nets, disc_c_dim
 
@@ -217,9 +229,12 @@ def build_optims(nets, glr, dlr):
     di_optimizier = torch.optim.Adam(nets.netD_i.parameters(), lr=dlr, betas=(args.betas[0], args.betas[1]))
     dt_optimizier = torch.optim.Adam(nets.netD_t.parameters(), lr=dlr, betas=(args.betas[0], args.betas[1]))
     h_optimizier = torch.optim.Adam(nets.netH.parameters(), lr=glr, betas=(args.betas[0], args.betas[1]))
-
+    if args.shape_network_sep_target:
+        h_t_optimizier = torch.optim.Adam(nets.netH_t.parameters(), lr=glr, betas=(args.betas[0], args.betas[1]))
+    else:
+        h_t_optimizier = None
     return munch.Munch({"g_optimizier": g_optimizier, "di_optimizier": di_optimizier, "dt_optimizier": dt_optimizier,
-                        "h_optimizier": h_optimizier})
+                        "h_optimizier": h_optimizier, "h_t_optimizier": h_t_optimizier})
 
 
 def print_network(network, name):

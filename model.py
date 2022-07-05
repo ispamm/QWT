@@ -1,14 +1,10 @@
-import json
-
 import numpy as np
 import torch
-import torchvision
-from munch import Munch
 from torch import nn
 
 from QGAN.utils.QSN2 import Qspectral_norm
 from QGAN.utils.quaternion_layers import QuaternionConv, QuaternionTransposeConv
-from config import args, device
+from config import args, device, grayscale
 import torch.nn.functional as F
 
 from dataset import wavelet_wrapper
@@ -231,6 +227,7 @@ class Decoder(nn.Module):
         x = 0
         for i, layer in enumerate(self.decoder):
             x = torch.cat([share_input, encoder_input[i][0]], dim=1)
+            # print(x.shape,share_input.shape, encoder_input[i][0].shape)
             x = layer(x)
             share_input = x
         return x
@@ -411,8 +408,6 @@ def create_wavelet_from_input_tensor(inputs):
     return torch.stack(lst, dim=0).to(device)
 
 
-grayscale = torchvision.transforms.Grayscale(num_output_channels=1)
-
 '''
 Generator
 '''
@@ -423,10 +418,13 @@ class Generator(nn.Module):
 
     def __init__(self, in_c, mid_c, layers, s_layers, affine, last_ac=True):
         super(Generator, self).__init__()
-        self.img_encoder = Encoder(in_c, mid_c, layers, affine)
+        self.img_encoder = Encoder(in_c, mid_c*2, layers, affine)
         self.img_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
         self.share_net = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
                                   256)
+        if args.wavelet_net:
+            self.wavelet_net = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
+                                    256)
         if args.wavelet_target:
             self.target_encoder = Encoder(in_c, mid_c, layers, affine)
         else:
@@ -434,12 +432,15 @@ class Generator(nn.Module):
         if args.target_real:
             args.real = True
             args.qsn = False
-        self.target_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
-        self.share_net_2 = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
-                                  256)
-        if args.target_real:
+            self.target_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
+            self.share_net_2 = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
+                                    256)
             args.real = False
             args.qsn = True
+        else:
+            self.target_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
+
+
         if args.phm and not args.last_layer_gen_real:
             self.out_img = PHMConv(4, mid_c, 4, 1, bias=bias)
             self.out_tumor = PHMConv(4, mid_c, 4, 1, bias=bias)
@@ -451,7 +452,7 @@ class Generator(nn.Module):
             self.out_tumor = nn.Conv2d(mid_c, 1, 1, bias=bias)
 
         self.last_ac = last_ac
-
+        self.num_layers = layers
     # G(image,target_image,target_modality) --> (out_image,output_target_area_image)
 
     def forward(self, img, tumor=None, c=None, mode="train"):
@@ -463,7 +464,9 @@ class Generator(nn.Module):
         #    img_target_wavelet = torch.cat([img_target, wavelet_img], dim=1)
         # print('gen - img5')
         # add wavelet to img_target so now tensor is (1real+3target,4wavelets) = 8 channels so 2 quaternion
-        if img.size(1) == 1 and args.wavelet_disc_gen[1]:
+        if args.wavelet_net:
+            print()
+        elif img.size(1) == 1 and args.wavelet_disc_gen[1]:
             img_target = torch.cat([img_target, create_wavelet_from_input_tensor(img)], dim=1)
             #img_target = torch.cat([img_target, torch.randn(1, 4, 64, 64).requires_grad_(img.requires_grad)], dim=1)
             # print('gen - img1')
@@ -473,10 +476,22 @@ class Generator(nn.Module):
         # print('gen - img4', img_target.requires_grad)
         x_1 = self.img_encoder(img_target)
 
+
         # print(x_1[-1][1].shape,"x_1")
         s_1 = self.share_net(x_1)
         # print(s_1.shape,"s_1")
-        res_img = self.out_img(self.img_decoder(s_1, x_1))
+        if args.wavelet_net:
+            wav = create_wavelet_from_input_tensor(img)
+            encoded_wav = self.img_encoder(wav)
+            pre_decoder_wav = self.wavelet_net(encoded_wav)
+            s_1 = torch.cat([s_1, pre_decoder_wav], dim = 1)
+            x_1_all = list()
+            for i in range(self.num_layers):
+                x_ = [torch.cat([x_1[i][0], encoded_wav[i][0]], dim = 1),
+                            torch.cat([x_1[i][1], encoded_wav[i][1]], dim = 1)]
+                x_1_all.append(x_)
+        res_img = self.out_img(self.img_decoder(s_1, x_1_all))
+
         if not args.real and args.soup:
             res_img = res_img[:, :1, :, :]
         # wavelet
@@ -501,8 +516,12 @@ class Generator(nn.Module):
                 # print('gen tum- img1')
 
             x_2 = self.target_encoder(tumor_target)
+            if args.target_real:
+                s_2 = self.share_net_2(x_2)
+            else:
+                s_2 = self.share_net(x_2)
 
-            s_2 = self.share_net_2(x_2)
+
             res_tumor = self.out_tumor(self.target_decoder(s_2, x_2))
             if self.last_ac:
                 res_tumor = torch.tanh(res_tumor)

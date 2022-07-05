@@ -2,26 +2,23 @@ import time
 import datetime
 
 import torch
-import torchvision
 import wandb
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from config import device
+from config import device, grayscale
 from dataset import ChaosDataset_Syn_new, ChaosDataset_Syn_Test
 from metrics import calculate_all_metrics
 from utils import build_model, build_optims, load_nets, print_network, set_seed, loss_filter, label2onehot, \
     gradient_penalty, denorm, moving_average, \
     plot_images, save_state_net
 import torch.nn.functional as F
-from dataset import wavelet_real
 
 
 def convert_data_for_quaternion_tarGAN(batch):
     """
     converts batches of black and white images in 4 channels for QNNs
     """
-    grayscale = torchvision.transforms.Grayscale(num_output_channels=1)
     x_real, t_img, shape_mask, mask, label_org = [], [], [], [], []
     # (x_real, t_img, shape_mask, mask, label_org)
     for i in range(len(batch)):
@@ -70,7 +67,7 @@ def train(args):
 
     tot = 0
     for name, module in nets.items():
-        if name != "netG_use":
+        if name != "netG_use" and module is not None:
             tot += print_network(module, name)
 
     print("DONE", tot)
@@ -216,8 +213,10 @@ def train(args):
                 else:
                     gt_loss = torch.FloatTensor([0]).to(device)
                     g_loss_cls_t = torch.FloatTensor([0]).to(device)
-
-                shape_loss_t = F.mse_loss(nets.netH(t_fake), mask.float())
+                if args.shape_network_sep_target:
+                    shape_loss_t = F.mse_loss(nets.netH_t(t_fake), mask.float())
+                else:
+                    shape_loss_t = F.mse_loss(nets.netH(t_fake), mask.float())
                 g_loss_rec_t = torch.mean(torch.abs(t_img - t_reconst))
                 cross_loss = torch.mean(torch.abs(denorm(x_fake) * mask - denorm(t_fake)))
                 # Backward and optimize.
@@ -229,9 +228,12 @@ def train(args):
                 optims.di_optimizier.zero_grad()
                 optims.dt_optimizier.zero_grad()
                 optims.h_optimizier.zero_grad()
+                optims.h_t_optimizier.zero_grad()
+
                 g_loss.backward()
                 optims.g_optimizier.step()
                 optims.h_optimizier.step()
+                optims.h_t_optimizier.step()
 
                 moving_average(nets.netG, nets.netG_use, beta=0.999)
 
@@ -273,6 +275,9 @@ def train(args):
                 save_state_net(nets.netD_t, args, i + 1, optims.dt_optimizier)
                 args.net_name = 'netH'
                 save_state_net(nets.netH, args, i + 1, optims.h_optimizier)
+                if nets.netH_t != None:
+                    args.net_name = 'netH_t'
+                    save_state_net(nets.netH_t, args, i + 1, optims.h_t_optimizier)
 
             if (i + 1) == args.epoch:
                 fidstar, fid, dice, ravd, s_score, fid_giov, iou_dict, IS_ignite_dict, fid_ignite_dict = calculate_all_metrics(nets,

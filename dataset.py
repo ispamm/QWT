@@ -156,26 +156,26 @@ class ChaosDataset_Syn_new(Dataset):
         # t_img = (t_img - np.min(t_img)) / (np.max(t_img) - np.min(t_img))
         # img = img / np.max(img)
         # t_img = t_img / np.max(t_img)
-        if args.wavelet_disc_gen[0] or args.wavelet_disc_gen[1]:
-            img_wavelet = wavelet_wrapper(img, self.image_size)
-            t_img_wavelet = wavelet_wrapper(t_img, self.image_size)
+        # if args.wavelet_disc_gen[0] or args.wavelet_disc_gen[1]:
+        #     img_wavelet = wavelet_wrapper(img, self.image_size)
+        #     t_img_wavelet = wavelet_wrapper(t_img, self.image_size)
 
-            img_wavelet_tup = (torch.from_numpy(img).unsqueeze(dim=0).type(torch.FloatTensor),
-                               torch.from_numpy(img_wavelet).type(torch.FloatTensor))
-            t_img_wavelet_tup = (torch.from_numpy(t_img).unsqueeze(dim=0).type(torch.FloatTensor),
-                                 torch.from_numpy(t_img_wavelet).type(torch.FloatTensor))
-            #show_4_images(img, img_wavelet, class_label)
-            return img_wavelet_tup, \
-                   t_img_wavelet_tup, \
-                   torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
-                   torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
-                   torch.from_numpy(class_label).type(torch.FloatTensor)
-        else:
-            return (torch.from_numpy(img).type(torch.FloatTensor).unsqueeze(dim=0), torch.zeros(1)), \
-                   (torch.from_numpy(t_img).type(torch.FloatTensor).unsqueeze(dim=0), torch.zeros(1)), \
-                   torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
-                   torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
-                   torch.from_numpy(class_label).type(torch.FloatTensor)
+        #     img_wavelet_tup = (torch.from_numpy(img).unsqueeze(dim=0).type(torch.FloatTensor),
+        #                        torch.from_numpy(img_wavelet).type(torch.FloatTensor))
+        #     t_img_wavelet_tup = (torch.from_numpy(t_img).unsqueeze(dim=0).type(torch.FloatTensor),
+        #                          torch.from_numpy(t_img_wavelet).type(torch.FloatTensor))
+        #     #show_4_images(img, img_wavelet, class_label)
+        #     return img_wavelet_tup, \
+        #            t_img_wavelet_tup, \
+        #            torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
+        #            torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
+        #            torch.from_numpy(class_label).type(torch.FloatTensor)
+        # else:
+        return (torch.from_numpy(img).type(torch.FloatTensor).unsqueeze(dim=0), torch.zeros(1)), \
+                (torch.from_numpy(t_img).type(torch.FloatTensor).unsqueeze(dim=0), torch.zeros(1)), \
+                torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
+                torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
+                torch.from_numpy(class_label).type(torch.FloatTensor)
 
     def __len__(self):
         return len(self.raw_dataset)
