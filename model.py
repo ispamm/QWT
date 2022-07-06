@@ -308,7 +308,8 @@ class Discriminator(nn.Module):
                 layers.append(PHMConv(4, curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1))
             elif args.qsn:
                 if args.spectral:
-                    layers.append(Qspectral_norm(QuaternionConv(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1)))
+                    layers.append(
+                        Qspectral_norm(QuaternionConv(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1)))
                 else:
                     layers.append(QuaternionConv(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1))
             elif args.real:
@@ -333,10 +334,12 @@ class Discriminator(nn.Module):
             # self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
             # self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
             if args.spectral:
-                self.conv1 = Qspectral_norm(QuaternionConv(in_channels=curr_dim, out_channels=4, kernel_size=3, stride=1, padding=1,
-                                            bias=False))
-                self.conv2 = Qspectral_norm(QuaternionConv(in_channels=curr_dim, out_channels=c_dim, kernel_size=kernel_size, stride=1,
-                                            bias=False))
+                self.conv1 = Qspectral_norm(
+                    QuaternionConv(in_channels=curr_dim, out_channels=4, kernel_size=3, stride=1, padding=1,
+                                   bias=False))
+                self.conv2 = Qspectral_norm(
+                    QuaternionConv(in_channels=curr_dim, out_channels=c_dim, kernel_size=kernel_size, stride=1,
+                                   bias=False))
             else:
                 self.conv1 = QuaternionConv(in_channels=curr_dim, out_channels=4, kernel_size=3, stride=1, padding=1,
                                             bias=False)
@@ -359,6 +362,7 @@ class Discriminator(nn.Module):
                 self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
 
         self.target = target
+
     def forward(self, x_real, wavelets=torch.zeros(1)):
         # print("discriminatore in entrata", x.shape) #torch.Size([4, 1, 128, 128])
         # rgb + aalpha
@@ -378,8 +382,8 @@ class Discriminator(nn.Module):
             #     create_wavelet_from_input_tensor(x_real)[:,1:]
             #     ], dim=1).to(device)
             #     )
-            h = self.main(torch.cat([x_real,create_wavelet_from_input_tensor(x_real)[:,:3]], dim=1).to(device))
-            #h = self.main(torch.randn(1, 4, 64, 64).requires_grad_(x_real.requires_grad))
+            h = self.main(torch.cat([x_real, create_wavelet_from_input_tensor(x_real)[:, :3]], dim=1).to(device))
+            # h = self.main(torch.randn(1, 4, 64, 64).requires_grad_(x_real.requires_grad))
 
             # print('disc - img1', x.requires_grad)
         elif x_real.size(1) == 1 and (not args.real and not self.target):
@@ -403,8 +407,10 @@ class Discriminator(nn.Module):
 
 @torch.no_grad()
 def create_wavelet_from_input_tensor(inputs):
-    lst = [torch.from_numpy(wavelet_wrapper(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))).type(torch.FloatTensor) for chunk in
-           torch.split(inputs.detach(), 1, dim=0)]
+    lst = [
+        torch.from_numpy(wavelet_wrapper(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))).type(torch.FloatTensor)
+        for chunk in
+        torch.split(inputs.detach(), 1, dim=0)]
     return torch.stack(lst, dim=0).to(device)
 
 
@@ -418,13 +424,17 @@ class Generator(nn.Module):
 
     def __init__(self, in_c, mid_c, layers, s_layers, affine, last_ac=True):
         super(Generator, self).__init__()
-        self.img_encoder = Encoder(in_c, mid_c*2, layers, affine)
-        self.img_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
+        self.img_encoder = Encoder(in_c, mid_c, layers, affine)
+        self.img_decoder = Decoder(mid_c * (2 ** layers),
+                                   mid_c * (2 ** (layers - 1)), layers, affine, 64)
         self.share_net = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
                                   256)
         if args.wavelet_net:
-            self.wavelet_net = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
-                                    256)
+            self.wavelet_net = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers,
+                                        affine,
+                                        256)
+            self.img_decoder = Decoder(2 * mid_c * (2 ** layers),
+                                       2*mid_c * (2 ** (layers - 1)), layers, affine, 128)
         if args.wavelet_target:
             self.target_encoder = Encoder(in_c, mid_c, layers, affine)
         else:
@@ -433,13 +443,13 @@ class Generator(nn.Module):
             args.real = True
             args.qsn = False
             self.target_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
-            self.share_net_2 = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
-                                    256)
+            self.share_net_2 = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers,
+                                        affine,
+                                        256)
             args.real = False
             args.qsn = True
         else:
             self.target_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
-
 
         if args.phm and not args.last_layer_gen_real:
             self.out_img = PHMConv(4, mid_c, 4, 1, bias=bias)
@@ -449,10 +459,13 @@ class Generator(nn.Module):
             self.out_tumor = QuaternionConv(mid_c, 4, 1, stride=1, bias=bias)
         elif args.real or args.last_layer_gen_real:
             self.out_img = nn.Conv2d(mid_c, 1, 1, bias=bias)
+            if args.wavelet_net:
+                self.out_img = nn.Conv2d(2*mid_c, 1, 1, bias=bias)
             self.out_tumor = nn.Conv2d(mid_c, 1, 1, bias=bias)
 
         self.last_ac = last_ac
         self.num_layers = layers
+
     # G(image,target_image,target_modality) --> (out_image,output_target_area_image)
 
     def forward(self, img, tumor=None, c=None, mode="train"):
@@ -468,14 +481,13 @@ class Generator(nn.Module):
             print()
         elif img.size(1) == 1 and args.wavelet_disc_gen[1]:
             img_target = torch.cat([img_target, create_wavelet_from_input_tensor(img)], dim=1)
-            #img_target = torch.cat([img_target, torch.randn(1, 4, 64, 64).requires_grad_(img.requires_grad)], dim=1)
+            # img_target = torch.cat([img_target, torch.randn(1, 4, 64, 64).requires_grad_(img.requires_grad)], dim=1)
             # print('gen - img1')
         # # print(" dopo impiccio",img.shape,"c.shape",c.shape) #torch.Size([4, 4, 128, 128]) torch.Size([4, 3, 128, 128])
         # print("tumor",tumor.shape) torch.Size([4, 1, 128, 128])
 
         # print('gen - img4', img_target.requires_grad)
         x_1 = self.img_encoder(img_target)
-
 
         # print(x_1[-1][1].shape,"x_1")
         s_1 = self.share_net(x_1)
@@ -484,13 +496,16 @@ class Generator(nn.Module):
             wav = create_wavelet_from_input_tensor(img)
             encoded_wav = self.img_encoder(wav)
             pre_decoder_wav = self.wavelet_net(encoded_wav)
-            s_1 = torch.cat([s_1, pre_decoder_wav], dim = 1)
+            s_1 = torch.cat([s_1, pre_decoder_wav], dim=1)
             x_1_all = list()
             for i in range(self.num_layers):
-                x_ = [torch.cat([x_1[i][0], encoded_wav[i][0]], dim = 1),
-                            torch.cat([x_1[i][1], encoded_wav[i][1]], dim = 1)]
+                x_ = [torch.cat([x_1[i][0], encoded_wav[i][0]], dim=1),
+                      torch.cat([x_1[i][1], encoded_wav[i][1]], dim=1)]
                 x_1_all.append(x_)
-        res_img = self.out_img(self.img_decoder(s_1, x_1_all))
+            res_img = self.out_img(self.img_decoder(s_1, x_1_all))
+
+        else:
+            res_img = self.out_img(self.img_decoder(s_1, x_1))
 
         if not args.real and args.soup:
             res_img = res_img[:, :1, :, :]
@@ -511,7 +526,7 @@ class Generator(nn.Module):
 
             if tumor.size(1) == 1 and args.wavelet_target:
                 tumor_target = torch.cat([tumor_target, create_wavelet_from_input_tensor(tumor)], dim=1)
-                #tumor_target = torch.cat([tumor_target, torch.randn(1, 4, 64, 64).requires_grad_(tumor.requires_grad)],dim=1)
+                # tumor_target = torch.cat([tumor_target, torch.randn(1, 4, 64, 64).requires_grad_(tumor.requires_grad)],dim=1)
 
                 # print('gen tum- img1')
 
@@ -520,7 +535,6 @@ class Generator(nn.Module):
                 s_2 = self.share_net_2(x_2)
             else:
                 s_2 = self.share_net(x_2)
-
 
             res_tumor = self.out_tumor(self.target_decoder(s_2, x_2))
             if self.last_ac:
