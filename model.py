@@ -430,11 +430,18 @@ class Generator(nn.Module):
         self.share_net = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers, affine,
                                   256)
         if args.wavelet_net:
+            tmp =args.share_net_real
+            if args.wavelet_net_real:
+                args.share_net_real = True
+            else:
+                args.share_net_real = False
             self.wavelet_net = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers,
                                         affine,
                                         256)
             self.img_decoder = Decoder(2 * mid_c * (2 ** layers),
                                        2*mid_c * (2 ** (layers - 1)), layers, affine, 128)
+            args.share_net_real = tmp
+
         if args.wavelet_target:
             self.target_encoder = Encoder(in_c, mid_c, layers, affine)
         else:

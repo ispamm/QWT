@@ -228,12 +228,14 @@ def train(args):
                 optims.di_optimizier.zero_grad()
                 optims.dt_optimizier.zero_grad()
                 optims.h_optimizier.zero_grad()
-                optims.h_t_optimizier.zero_grad()
+                if args.shape_network_sep_target:
+                    optims.h_t_optimizier.zero_grad()
 
                 g_loss.backward()
                 optims.g_optimizier.step()
                 optims.h_optimizier.step()
-                optims.h_t_optimizier.step()
+                if args.shape_network_sep_target:
+                    optims.h_t_optimizier.step()
 
                 moving_average(nets.netG, nets.netG_use, beta=0.999)
 
