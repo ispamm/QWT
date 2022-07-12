@@ -450,13 +450,24 @@ class Generator(nn.Module):
             args.real = True
             args.qsn = False
             self.target_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
-            self.share_net_2 = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers,
-                                        affine,
-                                        256)
+            self.share_net_2 = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers,affine, 256)
             args.real = False
             args.qsn = True
         else:
             self.target_decoder = Decoder(mid_c * (2 ** layers), mid_c * (2 ** (layers - 1)), layers, affine, 64)
+        
+        if args.wavelet_net_target:
+            tmp =args.share_net_real
+            if args.wavelet_net_target_real:
+                args.share_net_real = True
+            else:
+                args.share_net_real = False
+            self.wavelet_net_target = ShareNet(mid_c * (2 ** (layers - 1)), mid_c * (2 ** (layers - 1 + s_layers)), s_layers,
+                                        affine,
+                                        256)
+            self.share_net_2 = None
+            self.target_decoder = Decoder(2 * mid_c * (2 ** layers), 2*mid_c * (2 ** (layers - 1)), layers, affine, 128)
+
 
         if args.phm and not args.last_layer_gen_real:
             self.out_img = PHMConv(4, mid_c, 4, 1, bias=bias)
@@ -469,6 +480,8 @@ class Generator(nn.Module):
             if args.wavelet_net:
                 self.out_img = nn.Conv2d(2*mid_c, 1, 1, bias=bias)
             self.out_tumor = nn.Conv2d(mid_c, 1, 1, bias=bias)
+            if args.wavelet_net_target:
+                self.out_tumor = nn.Conv2d(2*mid_c, 1, 1, bias=bias)
 
         self.last_ac = last_ac
         self.num_layers = layers
@@ -530,8 +543,9 @@ class Generator(nn.Module):
             # if tumor.size(1) == 5:
             #    tumor_target_wavelet = torch.cat([tumor_target, wavelet_tumor], dim=1)
             # print('gen tum- img5')
-
-            if tumor.size(1) == 1 and args.wavelet_target:
+            if args.wavelet_net_target:
+                print()
+            elif tumor.size(1) == 1 and args.wavelet_target:
                 tumor_target = torch.cat([tumor_target, create_wavelet_from_input_tensor(tumor)], dim=1)
                 # tumor_target = torch.cat([tumor_target, torch.randn(1, 4, 64, 64).requires_grad_(tumor.requires_grad)],dim=1)
 
@@ -543,7 +557,19 @@ class Generator(nn.Module):
             else:
                 s_2 = self.share_net(x_2)
 
-            res_tumor = self.out_tumor(self.target_decoder(s_2, x_2))
+            if args.wavelet_net_target:
+                wav = create_wavelet_from_input_tensor(tumor)
+                encoded_wav = self.target_encoder(wav)
+                pre_decoder_wav = self.wavelet_net_target(encoded_wav)
+                s_2 = torch.cat([s_2, pre_decoder_wav], dim=1)
+                x_2_all = list()
+                for i in range(self.num_layers):
+                    x_ = [torch.cat([x_2[i][0], encoded_wav[i][0]], dim=1),
+                        torch.cat([x_2[i][1], encoded_wav[i][1]], dim=1)]
+                    x_2_all.append(x_)
+                res_tumor = self.out_tumor(self.target_decoder(s_2, x_2_all))
+            else:
+                res_tumor = self.out_tumor(self.target_decoder(s_2, x_2))
             if self.last_ac:
                 res_tumor = torch.tanh(res_tumor)
             if not args.real and args.soup:

@@ -209,7 +209,12 @@ def wavelet_quat(image,image_size):
     # print("Image size:", image.shape)
 
     gl, gh, fl, fh = get_filters()
-    q0, q1, q2, q3 = qwt(image, gl, gh, fl, fh, only_low=False, quad="all")
+    q0, q1, q2, q3 = qwt(
+                            image,
+                            gl, gh, fl, fh, 
+                            only_low=args.wavelet_quat_type == "low", 
+                            quad="all"
+                        )
     # q0, q1, q2, q3 = self.quat_mag_and_phase(q0, q1, q2, q3)
 
     q0, q1, q2, q3 = q0[2:,:], q1[2:,:], q2[2:,:], q3[2:,:]
@@ -475,16 +480,16 @@ def qwt(image, gl, gh, fl, fh, only_low=True, quad=1):
 
     if only_low:
         t1 = colfilter(image, gl)
-        # t1 = downsample(t1)
+        t1 = downsample(t1)
         lglg = colfilter(t1, gl)
         t2 = colfilter(image, fl)
-        # t2 = downsample(t2)
+        t2 = downsample(t2)
         lflg = colfilter(t2, gl)
         t3 = colfilter(image, gl)
-        # t3 = downsample(t3)
+        t3 = downsample(t3)
         lglf = colfilter(t3, fl)
         t4 = colfilter(image, fl)
-        # t4 = downsample(t4)
+        t4 = downsample(t4)
         lflf = colfilter(t4, fl)
         # lglg, lflg, lglf, lflf = t1, t2, t3, t4
         # lglg, lflg, lglf, lflf = full_quat_downsample(lglg, lflg, lglf, lflf)

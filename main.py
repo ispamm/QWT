@@ -10,7 +10,7 @@ from metrics import compute_miou, create_images_for_dice_or_s_score, evaluate, e
 from train import train
 from sample import sample
 from utils import build_model, load_nets
-
+from tqdm import tqdm
 def set_deterministic(seed=42):
     random.seed(seed)
     np.random.seed(seed)
@@ -34,7 +34,6 @@ if __name__ == '__main__':
     if args.mode == "eval":
         #os.environ["CUDA_VISIBLE_DEVICES"] = "3"
         evaluation()
-        
 
     if args.mode == "sample":
         sample()

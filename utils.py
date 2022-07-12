@@ -96,7 +96,8 @@ def load_state_net(net, net_name, index, optim=None, parents_root='checkpoints/M
     if not os.path.isdir(save_path):
         raise Exception("wrong path")
     save_file = os.path.join(save_path, net_name)
-    net.load_state_dict(torch.load(save_file + '_' + str(index) + args.experiment_name + '.pkl', map_location=device))
+    if net is not None:
+        net.load_state_dict(torch.load(save_file + '_' + str(index) + args.experiment_name + '.pkl', map_location=device))
     if optim is not None:
         optim.load_state_dict(torch.load(save_file + '_optim_' + str(index) + args.experiment_name + '.pkl'))
     return net, optim
@@ -194,7 +195,8 @@ def build_model():
         args.real = False
         args.qsn = True
     else:
-        shape_net_channels = 4 if not args.real and args.wavelet_disc_gen[2] else 1
+        #TODO
+        shape_net_channels = 4 if (not args.real and args.wavelet_disc_gen[2]) or args.experiment_name in ['quat-server','qtargan_quat_shared'] else 1
         netH = ShapeUNet(img_ch=shape_net_channels, mid=args.h_conv, output_ch=shape_net_channels).to(device)
         netD_t = Discriminator(c_dim=disc_c_dim, image_size=args.image_size).to(device)
 

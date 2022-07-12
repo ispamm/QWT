@@ -10,15 +10,18 @@ share_net_real = False  # @param ["True", "False"] {type:"raw"}
 last_layer_gen_real = True  # @param ["True", "False"] {type:"raw"}
 wavelet_disc_gen = (False, True, False) #disc gen shape_controller
 wavelet_target = False #wavelet also on segmented image
-wavelet_type = "real" #@param ["real", "quat"]
+wavelet_type = "quat" #@param ["real", "quat"]
+wavelet_quat_type = "low"
 wavelet_net = True
-wavelet_net_real = True
+wavelet_net_real = False
+wavelet_net_target = True
+wavelet_net_target_real = False
 spectral = True
-target_real = True
+target_real = False
 shape_network_sep_target = False
-experiment_name = "test_danilo_real_wav_share_quat"  # @param {type:"string"}
-mode = "train"  # @param ["train", "eval","sample"]
-sepoch = 0  # @param {type:"integer"}
+experiment_name = "wqtargan_quat_wav_sep_net_img_and_target"  # @param {type:"string"}
+mode = "eval"  # @param ["train", "eval","sample"]
+sepoch = 50  # @param {type:"integer"}
 gpu_num = 0
 
 args = munch.Munch({
@@ -66,9 +69,12 @@ args = munch.Munch({
     "share_net_real": share_net_real,
     "wavelet_disc_gen": wavelet_disc_gen,
     "wavelet_type": wavelet_type,
+    "wavelet_quat_type": wavelet_quat_type,
     'wavelet_target':wavelet_target,
     "wavelet_net": wavelet_net,
     "wavelet_net_real": wavelet_net_real,
+    "wavelet_net_target": wavelet_net_target,
+    "wavelet_net_target_real": wavelet_net_target_real,
     "spectral" : spectral,
     "target_real": target_real,
     "shape_network_sep_target": shape_network_sep_target,

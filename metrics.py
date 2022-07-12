@@ -41,8 +41,8 @@ def calculate_pytorch_fid():
         for src in mod:
             print("evaluating " + src + " to " + p[-2:])
             eval_path = eval_root + src + " to " + p[-2:]
-            x = str(subprocess.check_output(
-                f'python -m pytorch_fid "{p}" "{eval_path}" --device "cuda:"{str(args.gpu_num)} --batch-size {args.eval_batch_size}',
+            dev = f"cuda:{str(args.gpu_num)}" if args.gpu_num>-1 else "cpu"
+            x = str(subprocess.check_output(f'python -m pytorch_fid "{p}" "{eval_path}" --device {dev} --batch-size {args.eval_batch_size}',
                 shell=True))
             x = x.split(' ')[-1][:-3]
             fid_scores["FID/" + src + " to " + p[-2:]] = float(x)
@@ -275,11 +275,9 @@ class LPIPS(nn.Module):
 
     def _load_lpips_weights(self):
         own_state_dict = self.state_dict()
-        if torch.cuda.is_available():
-            state_dict = torch.load(args.checkpoint_dir + '/lpips_weights.ckpt')
-        else:
-            state_dict = torch.load(args.checkpoint_dir + '/lpips_weights.ckpt',
-                                    map_location=torch.device('cpu'))
+        
+        state_dict = torch.load(args.checkpoint_dir + '/lpips_weights.ckpt',
+                                    map_location=device)
         for name, param in state_dict.items():
             if name in own_state_dict:
                 own_state_dict[name].copy_(param)
@@ -531,90 +529,98 @@ def png_series_reader(dir):
     return V
 
 
-def create_images_for_dice_or_s_score(nets, idx_eval, syneval_loader, dice_=False):
+def create_images_for_dice_or_s_score(nets, idx_eval, syneval_loader, dice_=False, calculate_mae=False):
     shutil.rmtree("Segmentation", ignore_errors=True)
     shutil.rmtree("Ground", ignore_errors=True)
     os.makedirs("Segmentation")
     os.makedirs("Ground")
-    plotted = 0
-    for epoch, ((x_real, wavelet_real), (t_img, wavelet_target), shape_mask, mask, label_org) in tqdm(
-            enumerate(syneval_loader),
-            total=len(syneval_loader)):
-        rand_idx = torch.randperm(label_org.size(0))
-        # label_trg = label_org[rand_idx]
-        c_org = label2onehot(label_org, args.c_dim)
-        # c_trg = label2onehot(label_trg, args.c_dim)
-        x_real = x_real.to(device)  # Input images.
-        c_org = c_org.to(device)  # Original domain labels.
-        # c_trg = c_trg.to(device)
-        t_img = t_img.to(device)
-        # translate only in one domain
-        # if dice_:
-        # s = c_trg.size(0)
-        # c_trg = c_trg[:s]
-        c_trg = getLabel(x_real, device, idx_eval, args.c_dim)
+    output_mae, plotted = 0, 0 
+    mae = nn.L1Loss()
+    with torch.no_grad():
+        for epoch, ((x_real, wavelet_real), (t_img, wavelet_target), shape_mask, mask, label_org) in tqdm(
+                enumerate(syneval_loader),
+                total=len(syneval_loader)):
+            # label_trg = label_org[rand_idx]
+            c_org = label2onehot(label_org, args.c_dim)
+            # c_trg = label2onehot(label_trg, args.c_dim)
+            x_real = x_real.to(device)  # Input images.
+            c_org = c_org.to(device)  # Original domain labels.
+            # c_trg = c_trg.to(device)
+            t_img = t_img.to(device)
+            # translate only in one domain
+            # if dice_:
+            # s = c_trg.size(0)
+            # c_trg = c_trg[:s]
+            c_trg = getLabel(x_real, device, idx_eval, args.c_dim)
 
-        # Original-to-target domain.
+            # Original-to-target domain.
 
-        if not dice_:
-            c_t, x_r, t_i, c_o = [], [], [], []
-            for i, x in enumerate(c_trg):
-                if not torch.all(x.eq(c_org[i])):
-                    c_t.append(x)
-                    x_r.append(x_real[i])
-                    t_i.append(t_img[i])
-                    c_o.append(c_org[i])
+            if not dice_:
+                c_t, x_r, t_i, c_o = [], [], [], []
+                for i, x in enumerate(c_trg):
+                    if not torch.all(x.eq(c_org[i])):
+                        c_t.append(x)
+                        x_r.append(x_real[i])
+                        t_i.append(t_img[i])
+                        c_o.append(c_org[i])
 
-                # print(x,c_org[i])
-            if len(c_t) == 0:
-                continue
-            c_trg = torch.stack(c_t, dim=0).to(device)
-            x_real = torch.stack(x_r, dim=0).to(device)
-            t_img = torch.stack(t_i, dim=0).to(device)
-            c_org = torch.stack(c_o, dim=0).to(device)
+                    # print(x,c_org[i])
+                if len(c_t) == 0:
+                    continue
+                c_trg = torch.stack(c_t, dim=0).to(device)
+                x_real = torch.stack(x_r, dim=0).to(device)
+                t_img = torch.stack(t_i, dim=0).to(device)
+                c_org = torch.stack(c_o, dim=0).to(device)
 
-        # good for dice
-        x_fake, t_fake = nets.netG_use(x_real, t_img,
-                                       c_trg)  # G(image,target_image,target_modality) --> (out_image,output_target_area_image)
+            # good for dice
+            x_fake, t_fake = nets.netG_use(x_real, t_img,
+                                        c_trg)  # G(image,target_image,target_modality) --> (out_image,output_target_area_image)
 
-        if not dice_:
-            x_reconst, t_reconst = nets.netG(x_fake, t_fake, c_org)
-            t_fake = t_reconst
-        # Target-to-original domain.
-        # fig = plt.figure(dpi=120)
-        # with torch.no_grad():
-        #     if plotted == 0:
-        #         plt.subplot(241)
-        #         plt.imshow(denorm(x_real[0]).squeeze().cpu().numpy(), cmap='gray')
-        #         plt.title("original image")
-        #         plt.subplot(242)
-        #         plt.imshow(denorm(x_fake[0]).squeeze().cpu().numpy(), cmap='gray')
-        #         plt.title("fake image")
-        #         # plt.subplot(253)
-        #         # plt.imshow(denorm(x_reconst[0]).squeeze().cpu().numpy(), cmap='gray')
-        #         # plt.title("x reconstruct image")
-        #         plt.subplot(243)
-        #         plt.imshow(denorm(t_img[0]).squeeze().cpu().numpy(), cmap='gray')
-        #         plt.title("original target")
-        #         plt.subplot(244)
-        #         plt.imshow(denorm(t_fake[0]).squeeze().cpu().numpy(), cmap='gray')
-        #         plt.title("fake target")
-        #         plt.show()
-        #         plotted = 1
-        #         plt.close(fig)
+            if not dice_:
+                try:
+                    _, t_reconst = nets.netG(x_fake, t_fake, c_org)
+                except:
+                    d = args.device
+                    args.device = 'cpu'
+                    _, t_reconst = nets.netG.cpu()(x_fake.cpu(), t_fake.cpu(), c_org.cpu())
+                    args.device = d
+                t_fake = t_reconst.to(device)
+            # Target-to-original domain.
+            # fig = plt.figure(dpi=120)
+            # with torch.no_grad():
+            #     if plotted == 0:
+            #         plt.subplot(241)
+            #         plt.imshow(denorm(x_real[0]).squeeze().cpu().numpy(), cmap='gray')
+            #         plt.title("original image")
+            #         plt.subplot(242)
+            #         plt.imshow(denorm(x_fake[0]).squeeze().cpu().numpy(), cmap='gray')
+            #         plt.title("fake image")
+            #         # plt.subplot(253)
+            #         # plt.imshow(denorm(x_reconst[0]).squeeze().cpu().numpy(), cmap='gray')
+            #         # plt.title("x reconstruct image")
+            #         plt.subplot(243)
+            #         plt.imshow(denorm(t_img[0]).squeeze().cpu().numpy(), cmap='gray')
+            #         plt.title("original target")
+            #         plt.subplot(244)
+            #         plt.imshow(denorm(t_fake[0]).squeeze().cpu().numpy(), cmap='gray')
+            #         plt.title("fake target")
+            #         plt.show()
+            #         plotted = 1
+            #         plt.close(fig)
 
-        for k in range(c_trg.size(0)):
-            filename = os.path.join("Segmentation",
-                                    '%.4i_%.2i.png' % (args.sepoch * args.eval_batch_size + (k + 1), epoch + 1))
-            save_image(t_fake[k], ncol=1, filename=filename)
-            filename = os.path.join("Ground",
-                                    '%.4i_%.2i.png' % (args.sepoch * args.eval_batch_size + (k + 1), epoch + 1))
-            if t_img.size(1) == 5:
-                t_img = t_img[:, :1]
+            if calculate_mae:
+                output_mae += mae(t_fake, t_img)
+            for k in range(c_trg.size(0)):
+                filename = os.path.join("Segmentation",
+                                        '%.4i_%.2i.png' % (args.sepoch * args.eval_batch_size + (k + 1), epoch + 1))
+                save_image(t_fake[k], ncol=1, filename=filename)
+                filename = os.path.join("Ground",
+                                        '%.4i_%.2i.png' % (args.sepoch * args.eval_batch_size + (k + 1), epoch + 1))
+                if t_img.size(1) == 5:
+                    t_img = t_img[:, :1]
 
-            save_image(t_img[k], ncol=1, filename=filename)
-
-
+                save_image(t_img[k], ncol=1, filename=filename)
+    return output_mae/len(syneval_loader)
 '''
 Giov FID
 '''
@@ -754,20 +760,16 @@ def metrics_giovanni():
 
     # Load pre-trained weights
     weight_dir = 'pretrained_weights/Genesis_Chest_CT.pt'
-    checkpoint = torch.load(weight_dir, map_location=torch.device("cpu"))
+    checkpoint = torch.load(weight_dir, map_location=device)
     state_dict = checkpoint['state_dict']
     unParalled_state_dict = {}
     for key in state_dict.keys():
         unParalled_state_dict[key.replace("module.", "")] = state_dict[key]
     base_model.load_state_dict(unParalled_state_dict)
     target_model = TargetNet(base_model)
-    target_model.to("cpu")
-    target_model = nn.DataParallel(target_model, device_ids=[i for i in range(torch.cuda.device_count())])
-    criterion = nn.BCELoss()
-    optimizer = torch.optim.SGD(target_model.parameters(), 1, momentum=0.9, weight_decay=0.0, nesterov=False)
-
+    target_model.to(device)
+    
     # train the model
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=int(50 * 0.8), gamma=0.5)
 
     # for epoch in tqdm(range(0, 10000)):
     #     scheduler.step(epoch)
@@ -862,7 +864,7 @@ def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_datas
                                   syneval_dataset,
                                   syneval_dataset2,
                                   syneval_dataset3)
-    dice_dict, ravd_dict, s_score_dict, iou_dict = {}, {}, {}, {}
+    dice_dict, ravd_dict, s_score_dict, iou_dict, mae_dict = {}, {}, {}, {}, {}
 
     for i in range(3):  # 3 domains
         # ======= Directories =======
@@ -871,7 +873,7 @@ def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_datas
         seg_dir = os.path.normpath('Segmentation')
         dicom_dir = os.path.normpath(cwd + '/Data_3D/DICOM_anon')
 
-        create_images_for_dice_or_s_score(nets, i, syneval_loader, True)
+        mae_dict["mae/" + mod[i]] = create_images_for_dice_or_s_score(nets, i, syneval_loader, dice_=True, calculate_mae=True)
         # ======= Volume Reading =======
         Vref = png_series_reader(ground_dir)
         Vseg = png_series_reader(seg_dir)
@@ -886,7 +888,7 @@ def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_datas
         iou_dict["IoU/" + mod[i]] = iou
 
         # calculate s score
-        create_images_for_dice_or_s_score(nets, i, syneval_loader, False)
+        create_images_for_dice_or_s_score(nets, i, syneval_loader, dice_=False)
         # ======= Volume Reading =======
         Vref = png_series_reader(ground_dir)
         Vseg = png_series_reader(seg_dir)
@@ -898,7 +900,7 @@ def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_datas
         # else:
         #     print('S-score = %.3f' %(dice))
 
-    return fid_stargan, fid_dict, dice_dict, ravd_dict, s_score_dict, fid_giov, iou_dict, IS_ignite_dict, fid_ignite_dict
+    return fid_stargan, fid_dict, dice_dict, ravd_dict, s_score_dict, fid_giov, iou_dict, IS_ignite_dict, fid_ignite_dict, mae_dict
 
 
 def evaluation():
@@ -910,7 +912,7 @@ def evaluation():
                                              image_size=args.image_size)
     syneval_dataset4 = ChaosDataset_Syn_new(path=args.dataset_path, split='test', modals=args.modals,
                                             image_size=args.image_size)
-    syneval_loader = DataLoader(syneval_dataset4, batch_size=args.batch_size,
+    syneval_loader = DataLoader(syneval_dataset4, batch_size=args.eval_batch_size,
                                 shuffle=True if args.mode != "sample" else False, collate_fn=None)  # if (
     # args.real or (not args.real and args.soup)) else convert_data_for_quaternion_tarGAN)
     ii = args.sepoch * 650
@@ -918,7 +920,7 @@ def evaluation():
     load_nets(nets)
     with wandb.init(config=args, project="quattargan") as run:
         wandb.run.name = args.experiment_name
-        fidstar, fid, dice, ravd, s_score, fid_giov, iou_dict, IS_ignite_dict, fid_ignite_dict = calculate_all_metrics(
+        fidstar, fid, dice, ravd, s_score, fid_giov, iou_dict, IS_ignite_dict, fid_ignite_dict, mae_dict = calculate_all_metrics(
             nets,
             syneval_dataset,
             syneval_dataset2,
@@ -935,4 +937,5 @@ def evaluation():
         wandb.log(dict(s_score), step=ii + 1, commit=False)
         wandb.log(dict(IS_ignite_dict), step=ii + 1, commit=False)
         wandb.log(dict(fid_ignite_dict), step=ii + 1, commit=False)
+        wandb.log(dict(mae_dict), step=ii + 1, commit=False)
         wandb.log(iou_dict, commit=True)
