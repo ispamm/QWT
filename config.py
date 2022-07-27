@@ -3,25 +3,29 @@ import torch
 from torchvision import transforms
 
 phm = False  # @param ["True", "False"] {type:"raw"}
-qsn = True  # @param ["True", "False"] {type:"raw"}
-real = False  # @param ["True", "False"] {type:"raw"}
+qsn = False  # @param ["True", "False"] {type:"raw"}
+real = True  # @param ["True", "False"] {type:"raw"}
 soup = False  # @param ["True", "False"] {type:"raw"}
-share_net_real = False  # @param ["True", "False"] {type:"raw"}
+share_net_real = True  # @param ["True", "False"] {type:"raw"}
 last_layer_gen_real = True  # @param ["True", "False"] {type:"raw"}
+wavelet_with_real_net = True
 wavelet_disc_gen = (False, True, False) #disc gen shape_controller
 wavelet_target = False #wavelet also on segmented image
 wavelet_type = "quat" #@param ["real", "quat"]
-wavelet_quat_type = "low"
-wavelet_net = True
+wavelet_quat_type = "low" #low or whatever (ele method)
+wavelet_net = False
 wavelet_net_real = False
-wavelet_net_target = True
+wavelet_net_target = False
 wavelet_net_target_real = False
 spectral = True
 target_real = False
 shape_network_sep_target = False
-experiment_name = "wqtargan_quat_wav_sep_net_img_and_target"  # @param {type:"string"}
-mode = "eval"  # @param ["train", "eval","sample"]
-sepoch = 50  # @param {type:"integer"}
+is_best_4 = False
+best_4 = [0,4,6,8]
+
+experiment_name = "real_with_quat_low_wavelet"  # @param {type:"string"}
+mode = "train"  # @param ["train", "eval","sample"]
+sepoch = 0  # @param {type:"integer"}
 gpu_num = 0
 
 args = munch.Munch({
@@ -37,7 +41,7 @@ args = munch.Munch({
     "batch_size": 16,
     "eval_batch_size": 16,
     "gan_version": "Generator[2/3]+shapeunet+D",
-    "image_size": 128,  # 256
+    "image_size": 256,  # 256
     "epoch": 50,
     "sepoch": sepoch,
     "modals": ('t1', 't2', 'ct'),
@@ -67,6 +71,7 @@ args = munch.Munch({
     "soup": soup,
     "last_layer_gen_real": last_layer_gen_real,
     "share_net_real": share_net_real,
+    "wavelet_with_real_net": wavelet_with_real_net,
     "wavelet_disc_gen": wavelet_disc_gen,
     "wavelet_type": wavelet_type,
     "wavelet_quat_type": wavelet_quat_type,
@@ -78,6 +83,8 @@ args = munch.Munch({
     "spectral" : spectral,
     "target_real": target_real,
     "shape_network_sep_target": shape_network_sep_target,
+    "best_4": best_4,
+    "is_best_4": is_best_4,
     "seed": 888,
     "gpu_num": gpu_num
 })

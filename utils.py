@@ -179,7 +179,14 @@ def build_model():
     else:
         #wavelets
         disc_c_dim = 6
-    channels = 5 if (not args.real and not args.soup and args.wavelet_disc_gen[1] and not args.wavelet_net) else 1
+    channels = 5 if (
+        (
+            not args.real and 
+            not args.soup and 
+            args.wavelet_disc_gen[1] and
+            not args.wavelet_net 
+        ) 
+        or args.wavelet_with_real_net) else 1
     netG = Generator(in_c=channels + args.c_dim, mid_c=args.G_conv, layers=2, s_layers=3, affine=True, last_ac=True).to(
         device)
 

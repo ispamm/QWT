@@ -171,6 +171,7 @@ class ChaosDataset_Syn_new(Dataset):
         #            torch.from_numpy(seg_mask).type(torch.LongTensor).unsqueeze(dim=0), \
         #            torch.from_numpy(class_label).type(torch.FloatTensor)
         # else:
+        #we are not returning any wavelet, because they are computed at training time
         return (torch.from_numpy(img).type(torch.FloatTensor).unsqueeze(dim=0), torch.zeros(1)), \
                 (torch.from_numpy(t_img).type(torch.FloatTensor).unsqueeze(dim=0), torch.zeros(1)), \
                 torch.from_numpy(shape_mask).type(torch.LongTensor).unsqueeze(dim=0), \
@@ -209,13 +210,29 @@ def wavelet_quat(image,image_size):
     # print("Image size:", image.shape)
 
     gl, gh, fl, fh = get_filters()
-    q0, q1, q2, q3 = qwt(
-                            image,
-                            gl, gh, fl, fh, 
-                            only_low=args.wavelet_quat_type == "low", 
-                            quad="all"
-                        )
-    # q0, q1, q2, q3 = self.quat_mag_and_phase(q0, q1, q2, q3)
+
+    if args.is_best_4:
+        ele, all_ = qwt(image, gl, gh, fl, fh, only_low=False, quad="all")
+        subbands = []
+        for subband in all_:
+            subband = subband[2:,:]
+            subband = np.expand_dims(subband, axis=0)
+            subbands.append(subband)
+        train = np.concatenate(subbands, axis=0)
+        #train = torch.from_numpy(train.astype(np.float32))
+        a = []
+        for wav_num in args.best_4:
+            a.append(train[wav_num])
+        train = np.stack(a, axis = 0)
+        return train
+    else:
+        q0, q1, q2, q3 = qwt(
+                        image,
+                        gl, gh, fl, fh, 
+                        only_low=args.wavelet_quat_type == "low", 
+                        quad="all"
+                    )
+    q0, q1, q2, q3 = quat_mag_and_phase(q0, q1, q2, q3)
 
     q0, q1, q2, q3 = q0[2:,:], q1[2:,:], q2[2:,:], q3[2:,:]
 
@@ -419,7 +436,7 @@ def _centered(arr, newsize):
     myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
     return arr[tuple(myslice)]
 
-def _column_convolve(X, h):
+def _column_convolve( X, h):
     """Convolve the columns of *X* with *h* returning only the 'valid' section,
     i.e. those values unaffected by zero padding. Irrespective of the ftype of
     *h*, the output will have the dtype of *X* appropriately expanded to a
@@ -430,16 +447,21 @@ def _column_convolve(X, h):
     h = h.flatten().astype(X.dtype)
     h_size = h.shape[0]
 
-    full_size = X.shape[0] + h_size - 1
-    Xshape[0] = full_size
+#     full_size = X.shape[0] + h_size - 1
+#     print("full size:", full_size)
+#     Xshape[0] = full_size
 
     out = np.zeros(Xshape, dtype=X.dtype)
     for idx in xrange(h_size):
-        out[idx:(idx+X.shape[0]),...] += X * h[idx]
-
+        conv = X*h[idx]
+        out += X * h[idx]
+    
     outShape = Xshape.copy()
     outShape[0] = abs(X.shape[0] - h_size) + 1
+
     return _centered(out, outShape)
+
+
 
 def colfilter(X, h):
     """Filter the columns of image *X* using filter vector *h*, without decimation.
@@ -545,14 +567,18 @@ def qwt(image, gl, gh, fl, fh, only_low=True, quad=1):
             return lflf, lfhf, hflf, hfhf
         
         elif quad=="all":
-            # t1 = colfilter(image, gl)
-            # lglg = colfilter(t1, gl)
-            # t2 = colfilter(image, gl)
-            # lghg = colfilter(t2, gh)
-            # t3 = colfilter(image, gh)
-            # hglg = colfilter(t3, gl)
-            # t4 = colfilter(image, gh)
-            # hghg = colfilter(t4, gh)
+            t1 = colfilter(image, gl)
+            t1 = downsample(t1)
+            lglg = colfilter(t1, gl)
+            t2 = colfilter(image, gl)
+            t2 = downsample(t2)
+            lghg = colfilter(t2, gh)
+            t3 = colfilter(image, gh)
+            t3 = downsample(t3)
+            hglg = colfilter(t3, gl)
+            t4 = colfilter(image, gh)
+            t4 = downsample(t4)
+            hghg = colfilter(t4, gh)
 
             t1 = colfilter(image, fl)
             t1 = downsample(t1)
@@ -604,7 +630,9 @@ def qwt(image, gl, gh, fl, fh, only_low=True, quad=1):
             hl = (hflg + hglf + hflf)/3
             hh = (hfhg + hghf + hfhf)/3
 
-            return ll, lh, hl, hh
+            # return ll, lh, hl, hh
+            return (ll, lh, hl, hh), (lglg, lghg, hglg, hghg, lflg, lfhg, hflg, hfhg, lglf, lghf, hglf, hghf, lflf, lfhf, hflf, hfhf)
+
 
 def quat_mag_and_phase(q0, q1, q2, q3):
     '''Compute the magnitude and phase quaternion representation.'''

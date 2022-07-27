@@ -14,4 +14,4 @@ pywavelets
 scipy
 imageio
 pytorch-fid
-ignite
+pytorch-ignite
