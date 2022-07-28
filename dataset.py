@@ -223,7 +223,8 @@ def wavelet_quat(image,image_size):
         a = []
         for wav_num in args.best_4:
             a.append(train[wav_num])
-        train = np.stack(a, axis = 0)
+        q0,q1,q2,q3 = quat_mag_and_phase(*a)
+        train = np.stack([q0,q1,q2,q3], axis = 0)
         return train
     else:
         q0, q1, q2, q3 = qwt(
@@ -232,7 +233,7 @@ def wavelet_quat(image,image_size):
                         only_low=args.wavelet_quat_type == "low", 
                         quad="all"
                     )
-    q0, q1, q2, q3 = quat_mag_and_phase(q0, q1, q2, q3)
+    #q0, q1, q2, q3 = quat_mag_and_phase(q0, q1, q2, q3)
 
     q0, q1, q2, q3 = q0[2:,:], q1[2:,:], q2[2:,:], q3[2:,:]
 
@@ -447,13 +448,12 @@ def _column_convolve( X, h):
     h = h.flatten().astype(X.dtype)
     h_size = h.shape[0]
 
-#     full_size = X.shape[0] + h_size - 1
-#     print("full size:", full_size)
-#     Xshape[0] = full_size
+    #     full_size = X.shape[0] + h_size - 1
+    #     print("full size:", full_size)
+    #     Xshape[0] = full_size
 
     out = np.zeros(Xshape, dtype=X.dtype)
     for idx in xrange(h_size):
-        conv = X*h[idx]
         out += X * h[idx]
     
     outShape = Xshape.copy()

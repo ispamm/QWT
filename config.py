@@ -20,10 +20,10 @@ wavelet_net_target_real = False
 spectral = True
 target_real = False
 shape_network_sep_target = False
-is_best_4 = False
-best_4 = [0,4,6,8]
+is_best_4 = True
+best_4 = [0,2,6,15]
 
-experiment_name = "real_with_quat_low_wavelet"  # @param {type:"string"}
+experiment_name = "new_real_with_real_best_quat_low_ampl_wavelet"  # @param {type:"string"}
 mode = "train"  # @param ["train", "eval","sample"]
 sepoch = 0  # @param {type:"integer"}
 gpu_num = 0
@@ -41,7 +41,7 @@ args = munch.Munch({
     "batch_size": 16,
     "eval_batch_size": 16,
     "gan_version": "Generator[2/3]+shapeunet+D",
-    "image_size": 256,  # 256
+    "image_size": 128,  # 256
     "epoch": 50,
     "sepoch": sepoch,
     "modals": ('t1', 't2', 'ct'),
