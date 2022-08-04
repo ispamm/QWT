@@ -51,7 +51,7 @@ args = munch.Munch({
     "loss_function": "wgan-gp+move+cycle+ugan+d+l2",
     "optimizer": "adam",
     "note": "affine:True;",
-    "random_seed": 888,
+    "random_seed": seed,
     "log_every": 10,
     "print_every": 10,
     "save_every": 50,

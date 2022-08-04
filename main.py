@@ -14,9 +14,9 @@ import shutil
 from sample import sample
 
 def paper(exp_names):
-    
-    for _ in range(3):
-        seed = random.randint(1,888)
+    seeds = [1761017,1704899, 1245135, 2058486, 123152352]
+    for i in range(3):
+        seed = seeds[i] 
         for file_name in tqdm(exp_names, total=len(exp_names)):
             file_path_original = os.path.join("configs",file_name)
             module_name = "configs."+file_name[:-3]
@@ -74,11 +74,7 @@ if __name__ == '__main__':
     #     sample()
 
     # if args.mode == "paper":
-    exp_names = ['config_qwtargan_best4.py',
-                'config_qwqtargan_best4.py', 
-                'config_qwtargan.py', 
-                'config_wqtargan.py', 
-                'config_targan.py', 
+    exp_names = [
                 'config_qtargan.py', 
                 'config_qwqtargan.py', 
                 'config_wtargan.py'
