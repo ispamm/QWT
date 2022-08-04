@@ -4,7 +4,9 @@ from torch import nn
 
 from QGAN.utils.QSN2 import Qspectral_norm
 from QGAN.utils.quaternion_layers import QuaternionConv, QuaternionTransposeConv
-from config import args, device, grayscale
+from configs.config_tmp import args, device, grayscale
+print("model ",args)
+
 import torch.nn.functional as F
 
 from dataset import wavelet_wrapper
@@ -406,13 +408,13 @@ class Discriminator(nn.Module):
 
 
 @torch.no_grad()
-def create_wavelet_from_input_tensor(inputs):
+def create_wavelet_from_input_tensor(inputs, mods):
+    modalities = ["t1" if mods[i][0].any()==1 else "t2" if mods[i][1].any()==1 else "ct" for i in range(mods.size(0))]
     lst = [
-        torch.from_numpy(wavelet_wrapper(chunk.squeeze().cpu().detach().numpy(), chunk.size(2))).type(torch.FloatTensor)
-        for chunk in
-        torch.split(inputs.detach(), 1, dim=0)]
+        torch.from_numpy(wavelet_wrapper(chunk.squeeze().cpu().detach().numpy(), chunk.size(2), modalities[i])).type(torch.FloatTensor)
+        for i,chunk in
+        enumerate(torch.split(inputs.detach(), 1, dim=0))]
     return torch.stack(lst, dim=0).to(device)
-
 
 '''
 Generator
@@ -486,6 +488,7 @@ class Generator(nn.Module):
         self.last_ac = last_ac
         self.num_layers = layers
 
+
     # G(image,target_image,target_modality) --> (out_image,output_target_area_image)
 
     def forward(self, img, tumor=None, c=None, mode="train"):
@@ -500,7 +503,7 @@ class Generator(nn.Module):
         if args.wavelet_net:
             print()
         elif img.size(1) == 1 and args.wavelet_disc_gen[1]:
-            img_target = torch.cat([img_target, create_wavelet_from_input_tensor(img)], dim=1)
+            img_target = torch.cat([img_target, create_wavelet_from_input_tensor(img, c)], dim=1)
             # img_target = torch.cat([img_target, torch.randn(1, 4, 64, 64).requires_grad_(img.requires_grad)], dim=1)
             # print('gen - img1')
         # # print(" dopo impiccio",img.shape,"c.shape",c.shape) #torch.Size([4, 4, 128, 128]) torch.Size([4, 3, 128, 128])
@@ -530,7 +533,7 @@ class Generator(nn.Module):
         if not args.real and args.soup:
             res_img = res_img[:, :1, :, :]
         # wavelet
-        # res_img = res_img[:, :1, :, :]
+        res_img = res_img[:, :1, :, :]
 
         # print(res_img.shape)#torch.Size([4, 1, 128, 128])
         if self.last_ac:
@@ -576,7 +579,7 @@ class Generator(nn.Module):
                 res_tumor = res_tumor[:, :1, :, :]
 
             # wavelet
-            # res_tumor = res_tumor[:, :1, :, :]
+            res_tumor = res_tumor[:, :1, :, :]
 
             return res_img, res_tumor
         return res_img
@@ -651,7 +654,7 @@ class ShapeUNet(nn.Module):
         # wavelet
         if x.size(1) == 1 and args.wavelet_disc_gen[2]:
             x = create_wavelet_from_input_tensor(x)
-        elif x.size(1) == 1 and (not args.real and not args.wavelet_disc_gen[1]):
+        elif x.size(1) == 1 and (not args.real and not args.wavelet_disc_gen[1]) and not args.last_layer_gen_real:
             x = x.repeat(1, 3, 1, 1)
             x = torch.cat([x, grayscale(x)], 1)
         x1 = self.Conv1(x)

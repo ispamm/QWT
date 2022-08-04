@@ -11,9 +11,8 @@ import matplotlib.pyplot as plt
 import wandb
 import torchvision.utils as vutils
 
-from config import args, device
+from configs.config_tmp import args, device
 from model import Discriminator, Generator, ShapeUNet
-
 
 def loss_filter(mask, device="cuda"):
     lis = []
@@ -186,7 +185,8 @@ def build_model():
             args.wavelet_disc_gen[1] and
             not args.wavelet_net 
         ) 
-        or args.wavelet_with_real_net) else 1
+        or args.wavelet_with_real_net or args.wavelet_disc_gen[1]) else 1
+    print(channels)
     netG = Generator(in_c=channels + args.c_dim, mid_c=args.G_conv, layers=2, s_layers=3, affine=True, last_ac=True).to(
         device)
 
@@ -203,7 +203,7 @@ def build_model():
         args.qsn = True
     else:
         #TODO
-        shape_net_channels = 4 if (not args.real and args.wavelet_disc_gen[2]) or args.experiment_name in ['quat-server','qtargan_quat_shared'] else 1
+        shape_net_channels = 1 if args.last_layer_gen_real else 4
         netH = ShapeUNet(img_ch=shape_net_channels, mid=args.h_conv, output_ch=shape_net_channels).to(device)
         netD_t = Discriminator(c_dim=disc_c_dim, image_size=args.image_size).to(device)
 

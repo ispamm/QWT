@@ -1,7 +1,6 @@
 import munch
 import torch
 from torchvision import transforms
-
 phm = False  # @param ["True", "False"] {type:"raw"}
 qsn = True  # @param ["True", "False"] {type:"raw"}
 real = False  # @param ["True", "False"] {type:"raw"}
@@ -9,9 +8,9 @@ soup = False  # @param ["True", "False"] {type:"raw"}
 share_net_real = True  # @param ["True", "False"] {type:"raw"}
 last_layer_gen_real = True  # @param ["True", "False"] {type:"raw"}
 wavelet_with_real_net = False
-wavelet_disc_gen = (False, True, False) #disc gen shape_controller
+wavelet_disc_gen = (False, False, False) #disc gen shape_controller
 wavelet_target = False #wavelet also on segmented image
-wavelet_type = "quat" #@param ["real", "quat"]
+wavelet_type = "real" #@param ["real", "quat"]
 wavelet_quat_type = "aaa" #low or whatever (ele method)
 wavelet_net = False
 wavelet_net_real = False
@@ -22,10 +21,10 @@ target_real = False
 shape_network_sep_target = False
 is_best_4 = False
 best_4 = [0,2,6,15]
-
-experiment_name = "wavelet_real_only_img_gen_no_share"  # @param {type:"string"}
-mode = "paper"  # @param ["train", "eval","sample"]
-sepoch = 50  # @param {type:"integer"}
+seed = 888
+experiment_name = "qtargan_" +str(seed) # @param {type:"string"}
+mode = "train"  # @param ["train", "eval","sample"]
+sepoch = 0  # @param {type:"integer"}
 gpu_num = 0
 
 args = munch.Munch({
@@ -84,8 +83,7 @@ args = munch.Munch({
     "target_real": target_real,
     "shape_network_sep_target": shape_network_sep_target,
     "best_4": best_4,
-    "is_best_4": is_best_4,
-    "seed": 888,
+    "seed": seed,
     "gpu_num": gpu_num
 })
 

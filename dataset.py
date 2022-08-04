@@ -21,7 +21,8 @@ import pywt
 import pywt.data
 from itertools import chain
 from pathlib import Path
-from config import args
+from configs.config_tmp import args
+print(args.experiment_name)
 from scipy.fftpack import hilbert as ht
 from six.moves import xrange
 import torch
@@ -187,17 +188,17 @@ img should be a numpy array
 '''
 
 
-def wavelet_wrapper(img, img_size):
+def wavelet_wrapper(img, img_size, modality=None):
     if args.wavelet_type == 'real':
         return wavelet_real(img,img_size)
     elif args.wavelet_type == 'quat':
-        return wavelet_quat(img,img_size)
+        return wavelet_quat(img,img_size, modality)
     else:
         raise Exception
 
 
 @torch.no_grad()
-def wavelet_quat(image,image_size):
+def wavelet_quat(image,image_size, modality):
     
     ########## IMAGE ###############
     #image = imread(image)
@@ -221,7 +222,16 @@ def wavelet_quat(image,image_size):
         train = np.concatenate(subbands, axis=0)
         #train = torch.from_numpy(train.astype(np.float32))
         a = []
-        for wav_num in args.best_4:
+        lst_to_iterate = []
+        if modality=="ct":
+            lst_to_iterate = args.ct_best_4
+        if modality=="t1":
+            lst_to_iterate = args.t1_best_4
+        elif modality =="t2":
+            lst_to_iterate = args.t2_best_4
+        else:
+            lst_to_iterate = args.best_4
+        for wav_num in lst_to_iterate:
             a.append(train[wav_num])
         q0,q1,q2,q3 = quat_mag_and_phase(*a)
         train = np.stack([q0,q1,q2,q3], axis = 0)

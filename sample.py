@@ -1,60 +1,40 @@
 import os
 import time
-from datetime import datetime
-
+from datetime import datetime, timedelta
+from dataset import ChaosDataset_Syn_new
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from config import args, device
+from configs.config_tmp import args, device
 from train import build_model, build_optims, load_nets
 from utils import label2onehot, getLabel, save_image
 
 
-def sample(
-        syneval_dataset,
-        syneval_dataset2,
-        syneval_dataset3,
-        syneval_loader,
-        experiment=["parcollet_nuoovo", "phm_nuoovo"],):
+def sample(experiment=["parcollet_nuoovo", "phm_nuoovo"],):
     mod = ["t1", "t2", "ct"]
+    syneval_dataset4 = ChaosDataset_Syn_new(path=args.dataset_path, split='test', modals=args.modals,
+                                            image_size=args.image_size)
+    syneval_loader = DataLoader(syneval_dataset4, batch_size=args.eval_batch_size,
+                                shuffle=False, collate_fn=None)
     for exp in tqdm(experiment):
-        args.experiment_name = exp
-        if "phm" in exp:
-            args.qsn = False
-            args.phm = True
-            args.real = False
-            args.soup = True
-        elif "parc" in exp:
-            args.qsn = True
-            args.phm = False
-            args.real = False
-            args.soup = True
-        elif "real" in exp:
-            args.qsn = False
-            args.phm = False
-            args.real = True
-            args.soup = False
-        if "nuo" in exp:
-            args.last_layer_gen_real = True
-            args.share_net_real = True
-        else:
-            args.last_layer_gen_real = False
-            args.share_net_real = False
-        start_time = time.time()
 
+        start_time = time.time()
         nets, _ = build_model()
-        optims = build_optims(nets)
+        #optims = build_optims(nets)
         load_nets(nets)
         print(exp)
-
+        # os.makedirs("results/translation/"+exp)
+        # os.makedirs("results/segmentation/"+exp)
+        # os.makedirs("results/groundTrans/"+exp)
+        # os.makedirs("results/groundSeg/"+exp)
         for idx_eval in tqdm(range(3)):
-            loaders = {
-                "t1_loader": DataLoader(syneval_dataset, batch_size=args.eval_batch_size),
-                "t2_loader": DataLoader(syneval_dataset2, batch_size=args.eval_batch_size),
-                "ct_loader": DataLoader(syneval_dataset3, batch_size=args.eval_batch_size)
-            }
-            for epoch, (x_real, t_img, shape_mask, mask, label_org) in tqdm(enumerate(syneval_loader),
+            # loaders = {
+            #     "t1_loader": DataLoader(syneval_dataset, batch_size=args.eval_batch_size),
+            #     "t2_loader": DataLoader(syneval_dataset2, batch_size=args.eval_batch_size),
+            #     "ct_loader": DataLoader(syneval_dataset3, batch_size=args.eval_batch_size)
+            # }
+            for epoch, ((x_real, wavelet_real), (t_img, wavelet_target), shape_mask, mask, label_org) in tqdm(enumerate(syneval_loader),
                                                                             total=len(syneval_loader)):
                 rand_idx = torch.randperm(label_org.size(0))
                 # label_trg = label_org[rand_idx]
@@ -96,21 +76,20 @@ def sample(
                 # if not dice_:
                 #     x_reconst, t_reconst = netG(x_fake, t_fake, c_org)
                 #     t_fake = t_reconst
-
                 for k in range(c_trg.size(0)):
-                    filename = os.path.join("/content/drive/MyDrive/Thesis/TarGAN/results/translation",
+                    filename = os.path.join("results/translation",
                                             mod[idx_eval] + "_" + exp + '_%.4i_%.2i.png' % (
                                                 args.sepoch * args.eval_batch_size + (k + 1), epoch + 1))
                     save_image(x_fake[k], ncol=1, filename=filename)
-                    filename = os.path.join("/content/drive/MyDrive/Thesis/TarGAN/results/groundTrans",
+                    filename = os.path.join("results/groundTrans",
                                             mod[idx_eval] + "_" + exp + '_%.4i_%.2i.png' % (
                                                 args.sepoch * args.eval_batch_size + (k + 1), epoch + 1))
                     save_image(x_real[k], ncol=1, filename=filename)
-                    filename = os.path.join("/content/drive/MyDrive/Thesis/TarGAN/results/segmentation",
+                    filename = os.path.join("results/segmentation",
                                             mod[idx_eval] + "_" + exp + '_%.4i_%.2i.png' % (
                                                 args.sepoch * args.eval_batch_size + (k + 1), epoch + 1))
                     save_image(t_fake[k], ncol=1, filename=filename)
-                    filename = os.path.join("/content/drive/MyDrive/Thesis/TarGAN/results/groundSeg",
+                    filename = os.path.join("results/groundSeg",
                                             mod[idx_eval] + "_" + exp + '_%.4i_%.2i.png' % (
                                                 args.sepoch * args.eval_batch_size + (k + 1), epoch + 1))
                     save_image(t_img[k], ncol=1, filename=filename)
@@ -119,6 +98,6 @@ def sample(
                 #     break
 
         elapsed = time.time() - start_time
-        elapsed = str(datetime.timedelta(seconds=elapsed))[:-7]
+        elapsed = str(timedelta(seconds=elapsed))[:-7]
         log = "Elapsed time [%s], " % (elapsed)
         print(args.experiment_name, log)

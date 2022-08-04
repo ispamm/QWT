@@ -9,7 +9,7 @@ from tqdm import tqdm
 import torch.nn.functional as F
 import wandb
 
-from config import device, args
+from config import device
 from dataset import ChaosDataset_Syn_Test, ChaosDataset_Syn_new, MyDataset
 from ModelsGenesis import unet3d
 from utils import build_model, load_nets, save_image, getLabel, label2onehot, save_json
@@ -23,7 +23,7 @@ from scipy import linalg
 from torchvision import models
 import subprocess
 from ignite.metrics import FID, InceptionScore
-
+from configs.config_tmp import args
 
 def calculate_pytorch_fid():
     if "50" in args.png_dataset_path:

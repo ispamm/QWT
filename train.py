@@ -38,7 +38,10 @@ def convert_data_for_quaternion_tarGAN(batch):
            torch.LongTensor(label_org)
 
 
-def train(args):
+def train(args=None):
+    if args==None:
+        from configs.config_tmp import args
+    print(args.experiment_name)
     glr = args.lr
     dlr = args.ttur
     set_seed(args.random_seed)
@@ -86,6 +89,7 @@ def train(args):
                     desc="epoch {}".format(i)):
                 # 1. Preprocess input data
                 # Generate target domain labels randomly.
+
                 rand_idx = torch.randperm(label_org.size(0))
                 label_trg = label_org[rand_idx]
                 c_org = label2onehot(label_org, args.c_dim)
@@ -297,10 +301,22 @@ def train(args):
                 wandb.log(dict(ravd), step=ii + 1, commit=False)
                 wandb.log(dict(iou_dict), step=ii + 1, commit=False)
                 wandb.log(dict(mae_dict), step=ii + 1, commit=False)
-                wandb.log(dict(s_score), step=ii + 1, commit=True)
+                wandb.log(dict(s_score), step=ii + 1, commit=False)
+                formatt = "TarGAN                                      & {}  & {}       & {}                         & {}  & {}     & {}  & \multicolumn{{3}}{{c}} {}           \\ ".format(
+                    fid_giov["mean"],
+                    (fid_ignite_dict["ct_mean"]+fid_ignite_dict["t1_mean"]+fid_ignite_dict["t2_mean"])/3,
+                    (IS_ignite_dict["ct_mean"]+IS_ignite_dict["t1_mean"]+IS_ignite_dict["t2_mean"])/3,
+                    (dice["ct"]+dice["t1"]+dice["t2"])/3,
+                    (s_score["ct"]+s_score["t1"]+s_score["t2"])/3,
+                    (iou_dict["ct"]+iou_dict["t1"]+iou_dict["t2"])/3,
+                    (mae_dict["ct"]+mae_dict["t1"]+mae_dict["t2"])/3,
+                )
+                wandb.log({"latex_string":formatt},step=ii + 1, commit=True)
+
             if (i + 1) % 1 == 0:
                 elapsed = time.time() - start_time
                 elapsed = str(datetime.timedelta(seconds=elapsed))[:-7]
                 log = "Elapsed time [%s], Iteration [%i/%i], " % (elapsed, i + 1, args.epoch)
                 print(log)
                 torch.cuda.empty_cache()
+
