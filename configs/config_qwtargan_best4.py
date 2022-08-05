@@ -27,7 +27,7 @@ ct_best_4 = [0, 2, 3, 4]
 seed = 888
 experiment_name = "qwtargan_best4_"+str(seed)  # @param {type:"string"}
 mode = "train"  # @param ["train", "eval","sample"]
-sepoch = 49  # @param {type:"integer"}
+sepoch = 0  # @param {type:"integer"}
 gpu_num = 0
 
 args = munch.Munch({
