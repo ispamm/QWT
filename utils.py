@@ -10,8 +10,14 @@ import torch
 import matplotlib.pyplot as plt
 import wandb
 import torchvision.utils as vutils
+from importlib import reload
+import configs.config_tmp
+reload(configs.config_tmp)
 
 from configs.config_tmp import args, device
+print("utils module sees: ",args.experiment_name)
+import model
+reload(model)
 from model import Discriminator, Generator, ShapeUNet
 
 def loss_filter(mask, device="cuda"):

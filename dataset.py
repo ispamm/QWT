@@ -4,6 +4,7 @@ Liver: 63 (55<<<70)
 """
 import os
 import wave
+from importlib import reload
 
 from PIL import Image
 from matplotlib import pyplot as plt
@@ -21,8 +22,11 @@ import pywt
 import pywt.data
 from itertools import chain
 from pathlib import Path
+import configs.config_tmp
+reload(configs.config_tmp)
 from configs.config_tmp import args
-print(args.experiment_name)
+
+print("dataset module sees: ",args.experiment_name)
 from scipy.fftpack import hilbert as ht
 from six.moves import xrange
 import torch
@@ -39,7 +43,7 @@ def listdir(dname):
 class ChaosDataset_Syn_new(Dataset):
     def __init__(self, path="../datasets/chaos2019", split='train', modals=('t1', 't2', 'ct'), transforms=None,
                  image_size=256):
-        super(ChaosDataset_Syn_new, self).__init__()
+        super().__init__()
         for modal in modals:
             assert modal in {'t1', 't2', 'ct'}
         fold = split + "/"
@@ -681,7 +685,7 @@ class ChaosDataset_Syn_Test(Dataset):
 
     def __init__(self, path="../datasets/chaos2019", split='test', modal='t1', gan=False, transforms=None,
                  image_size=256):
-        super(ChaosDataset_Syn_Test, self).__init__()
+        super().__init__()
         # assert modal in {'t1', 't2','ct'}
         fold = split + "/" + modal
         path = os.path.join(path, fold)

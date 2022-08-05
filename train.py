@@ -5,7 +5,7 @@ import torch
 import wandb
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-
+import utils,metrics,dataset
 from config import device, grayscale
 from dataset import ChaosDataset_Syn_new, ChaosDataset_Syn_Test
 from metrics import calculate_all_metrics
@@ -40,7 +40,14 @@ def convert_data_for_quaternion_tarGAN(batch):
 
 def train(args=None):
     if args==None:
+        from importlib import reload
+        import configs.config_tmp
+        reload(configs.config_tmp)
+        reload(utils)
+        reload(metrics)
+        reload(dataset)
         from configs.config_tmp import args
+        print("train module sees: ",args.experiment_name)
     print(args.experiment_name)
     glr = args.lr
     dlr = args.ttur
@@ -285,7 +292,7 @@ def train(args=None):
                     args.net_name = 'netH_t'
                     save_state_net(nets.netH_t, args, i + 1, optims.h_t_optimizier)
 
-            if (i + 1) == args.epoch:
+            if (i + 1) >= args.epoch:
                 fidstar, fid, dice, ravd, s_score, fid_giov, iou_dict, IS_ignite_dict, fid_ignite_dict, mae_dict = calculate_all_metrics(nets,
                                                                                     syneval_dataset,
                                                                                     syneval_dataset2,
@@ -303,13 +310,13 @@ def train(args=None):
                 wandb.log(dict(mae_dict), step=ii + 1, commit=False)
                 wandb.log(dict(s_score), step=ii + 1, commit=False)
                 formatt = "TarGAN                                      & {}  & {}       & {}                         & {}  & {}     & {}  & \multicolumn{{3}}{{c}} {}           \\ ".format(
-                    fid_giov["mean"],
-                    (fid_ignite_dict["ct_mean"]+fid_ignite_dict["t1_mean"]+fid_ignite_dict["t2_mean"])/3,
-                    (IS_ignite_dict["ct_mean"]+IS_ignite_dict["t1_mean"]+IS_ignite_dict["t2_mean"])/3,
-                    (dice["ct"]+dice["t1"]+dice["t2"])/3,
-                    (s_score["ct"]+s_score["t1"]+s_score["t2"])/3,
-                    (iou_dict["ct"]+iou_dict["t1"]+iou_dict["t2"])/3,
-                    (mae_dict["ct"]+mae_dict["t1"]+mae_dict["t2"])/3,
+                    fid_giov["FID_giov_/mean"],
+                    (fid_ignite_dict["FID-ignite/ct_mean"]+fid_ignite_dict["FID-ignite/t1_mean"]+fid_ignite_dict["FID-ignite/t2_mean"])/3,
+                    (IS_ignite_dict["IS/ct_mean"]+IS_ignite_dict["IS/t1_mean"]+IS_ignite_dict["IS/t2_mean"])/3,
+                    (dice["DICE/ct"]+dice["DICE/t1"]+dice["DICE/t2"])/3,
+                    (s_score["S-SCORE/ct"]+s_score["S-SCORE/t1"]+s_score["S-SCORE/t2"])/3,
+                    (iou_dict["IoU/ct"]+iou_dict["IoU/t1"]+iou_dict["IoU/t2"])/3,
+                    (mae_dict["mae/ct"]+mae_dict["mae/t1"]+mae_dict["mae/t2"])/3,
                 )
                 wandb.log({"latex_string":formatt},step=ii + 1, commit=True)
 
