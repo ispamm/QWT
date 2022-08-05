@@ -18,7 +18,7 @@ from train import build_model, build_optims, load_nets
 from utils import label2onehot, getLabel, save_image
 
 
-def sample(experiment=["parcollet_nuoovo", "phm_nuoovo"],):
+def sample(nets=None, experiment=["parcollet_nuoovo", "phm_nuoovo"],):
     mod = ["t1", "t2", "ct"]
     syneval_dataset4 = ChaosDataset_Syn_new(path=args.dataset_path, split='test', modals=args.modals,
                                             image_size=args.image_size)
@@ -27,9 +27,9 @@ def sample(experiment=["parcollet_nuoovo", "phm_nuoovo"],):
     for exp in tqdm(experiment):
 
         start_time = time.time()
-        nets, _ = build_model()
-        #optims = build_optims(nets)
-        load_nets(nets)
+        # nets, _ = build_model()
+        # #optims = build_optims(nets)
+        # load_nets(nets)
         print(exp)
         # os.makedirs("results/translation/"+exp)
         # os.makedirs("results/segmentation/"+exp)

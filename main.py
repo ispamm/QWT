@@ -4,14 +4,14 @@ import munch
 import torch
 import random
 import numpy as np
-import sys
-import fileinput
+
 # from dataset import ChaosDataset_Syn_new
 # # from metrics import compute_miou, create_images_for_dice_or_s_score, evaluate, evaluation, calculate_ignite_inception_score, png_series_reader
 # from utils import build_model, load_nets
 from tqdm import tqdm
+import importlib.util
 import shutil
-# from sample import sample
+from sample import sample
 
 def paper(exp_names):
     seeds = [1761017,1704899, 1245135, 2058486, 123152352]
@@ -21,6 +21,9 @@ def paper(exp_names):
             file_path_original = os.path.join("configs",file_name)
             module_name = "configs."+file_name[:-3]
             shutil.copyfile(file_path_original, "configs/config_tmp.py")
+
+            import sys
+            import fileinput
 
             # This for loop scans and searches each line in the file
             # By using the input() method of fileinput module
@@ -33,13 +36,9 @@ def paper(exp_names):
                 # write() method of sys module redirects the .stdout is redirected to the file
                 sys.stdout.write(line)
             from train import train
-            import importlib 
-            import configs.config_tmp
-            importlib.reload(configs.config_tmp) 
             set_deterministic(seed)
-            train()
-            from sample import sample
-            #sample(experiment=[file_name[7:-3]+"_"+str(seed)])
+            nets = train()
+            sample(nets, experiment=[file_name[7:-3]+"_"+str(seed)])
 
 
 def set_deterministic(seed=42):
@@ -57,6 +56,8 @@ def set_deterministic(seed=42):
 # device = torch.device("cuda:1,3" if torch.cuda.is_available() else "cpu") ## specify the GPU id's, GPU id's start from 0.
 
 if __name__ == '__main__':
+    import importlib
+    import sys
     # set_deterministic(args.seed)
     #print(args)
     # if args.mode == "train":
@@ -74,11 +75,10 @@ if __name__ == '__main__':
 
     # if args.mode == "paper":
     exp_names = [
-            'config_qwqtargan_best4.py', 
-            'config_qwtargan_best4.py',
-            'config_qwtargan.py', 
-            'config_wqtargan.py', 
-            'config_targan.py'
-            ]
+                'config_qwqtargan.py', 
+                'config_wtargan.py',
+                'config_qtargan.py', 
+
+                ]
     paper(exp_names)
 

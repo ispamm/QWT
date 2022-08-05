@@ -309,7 +309,7 @@ def train(args=None):
                 wandb.log(dict(iou_dict), step=ii + 1, commit=False)
                 wandb.log(dict(mae_dict), step=ii + 1, commit=False)
                 wandb.log(dict(s_score), step=ii + 1, commit=False)
-                formatt = "TarGAN                                      & {}  & {}       & {}                         & {}  & {}     & {}  & \multicolumn{{3}}{{c}} {}           \\ ".format(
+                formatt = args.experiment_name +"                                      & {}  & {}       & {}                         & {}  & {}     & {}  & \multicolumn{{3}}{{c}} {}           \\ ".format(
                     fid_giov["FID_giov_/mean"],
                     (fid_ignite_dict["FID-ignite/ct_mean"]+fid_ignite_dict["FID-ignite/t1_mean"]+fid_ignite_dict["FID-ignite/t2_mean"])/3,
                     (IS_ignite_dict["IS/ct_mean"]+IS_ignite_dict["IS/t1_mean"]+IS_ignite_dict["IS/t2_mean"])/3,
@@ -326,4 +326,6 @@ def train(args=None):
                 log = "Elapsed time [%s], Iteration [%i/%i], " % (elapsed, i + 1, args.epoch)
                 print(log)
                 torch.cuda.empty_cache()
+
+    return nets
 
