@@ -37,6 +37,18 @@ def convert_data_for_quaternion_tarGAN(batch):
            torch.stack(mask), \
            torch.LongTensor(label_org)
 
+def set_deterministic(seed=42):
+    import random
+    import numpy as np
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.enabled = False
 
 def train(args=None):
     if args==None:
@@ -48,6 +60,8 @@ def train(args=None):
         reload(dataset)
         from configs.config_tmp import args
         print("train module sees: ",args.experiment_name)
+        set_deterministic(args.seed)
+
     print(args.experiment_name)
     glr = args.lr
     dlr = args.ttur
@@ -309,7 +323,7 @@ def train(args=None):
                 wandb.log(dict(iou_dict), step=ii + 1, commit=False)
                 wandb.log(dict(mae_dict), step=ii + 1, commit=False)
                 wandb.log(dict(s_score), step=ii + 1, commit=False)
-                formatt = args.experiment_name +"                                      & {}  & {}       & {}                         & {}  & {}     & {}  & \multicolumn{{3}}{{c}} {}           \\ ".format(
+                formatt = args.experiment_name +"                                      & {:.6f}  & {:.6f}       & {:.6f}                         & {:.6f}  & {:.6f}     & {:.6f}  & \multicolumn{{3}}{{c}} {:.6f}           \\ ".format(
                     fid_giov["FID_giov_/mean"],
                     (fid_ignite_dict["FID-ignite/ct_mean"]+fid_ignite_dict["FID-ignite/t1_mean"]+fid_ignite_dict["FID-ignite/t2_mean"])/3,
                     (IS_ignite_dict["IS/ct_mean"]+IS_ignite_dict["IS/t1_mean"]+IS_ignite_dict["IS/t2_mean"])/3,

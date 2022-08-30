@@ -29,7 +29,6 @@ experiment_name = "qwtargan_best4_"+str(seed)  # @param {type:"string"}
 mode = "train"  # @param ["train", "eval","sample"]
 sepoch = 0  # @param {type:"integer"}
 gpu_num = 0
-
 args = munch.Munch({
     "mode": mode,
     "experiment_name": experiment_name,

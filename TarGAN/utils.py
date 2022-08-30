@@ -15,7 +15,7 @@ import configs.config_tmp
 reload(configs.config_tmp)
 
 from configs.config_tmp import args, device
-print("utils module sees: ",args.experiment_name)
+print("utils module sees: ",args.seed)
 import model
 reload(model)
 from model import Discriminator, Generator, ShapeUNet

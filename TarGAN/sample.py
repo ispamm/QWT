@@ -108,3 +108,106 @@ def sample(nets=None, experiment=["parcollet_nuoovo", "phm_nuoovo"],):
         elapsed = str(timedelta(seconds=elapsed))[:-7]
         log = "Elapsed time [%s], " % (elapsed)
         print(args.experiment_name, log)
+
+
+mappa = {'targan_1761017' : "TarGAN", 'wtargan_1761017':"DWT", 'qwtargan_best4_1761017':"QWT-SGS", 'qwtargan_best4_moe_1761017':"QWT-MoE",}
+# 'qwtargan_best4_moe1761017'
+# wtargan_1761017
+def paper_sampling(nets_names=['targan_1761017', 'wtargan_1761017', 'qwtargan_best4_1761017', 'qwtargan_best4_moe_1761017']):
+    import matplotlib.pyplot as plt
+    import matplotlib.image as mpimg
+    plt.rcParams.update({'font.size': 10})
+    fig = plt.figure(figsize=(15, 5))
+
+    plt.axis('off')
+    plt.subplot(3,9,1)
+    plt.imshow(mpimg.imread("/home/luigi/Documents/QWT/results/groundTrans/ct_qwtargan_best4_moe_1761017_0001_27.png"))
+    plt.xticks([]) 
+    plt.yticks([])
+    plt.ylabel(r"CT $\rightarrow$ T1, T2")
+
+    j=0
+    for i,net_name in enumerate(nets_names):
+        plt.subplot(3,9,i+2+j)
+        img = mpimg.imread('/home/luigi/Documents/QWT/results/translation/t1_'+net_name+'_0001_27.png')
+        plt.imshow(img)
+        plt.xticks([]) 
+        plt.yticks([])
+        plt.subplot(3,9,i+3+j)
+        img = mpimg.imread('/home/luigi/Documents/QWT/results/translation/t2_'+net_name+'_0001_27.png')
+        plt.imshow(img)        #plt.xlabel(net_name+str(i))
+        plt.xticks([]) 
+        plt.yticks([])
+        j+=1
+        plt.subplots_adjust(wspace=0, hspace=0)
+
+    plt.subplot(3,9,10)
+    plt.imshow(mpimg.imread("/home/luigi/Documents/QWT/results/groundTrans/t1_qwtargan_best4_moe_1761017_0001_02.png"))
+    plt.xticks([]) 
+    plt.yticks([])
+    plt.ylabel(r"T1 $\rightarrow$ T2, CT")
+
+    j=9
+    for i,net_name in enumerate(nets_names):
+        plt.subplot(3,9,i+2+j)
+        img = mpimg.imread('/home/luigi/Documents/QWT/results/translation/t2_'+net_name+'_0001_02.png')
+        plt.imshow(img)
+        plt.xticks([]) 
+        plt.yticks([])
+        plt.subplot(3,9,i+3+j)
+        img = mpimg.imread('/home/luigi/Documents/QWT/results/translation/ct_'+net_name+'_0001_02.png')
+        plt.imshow(img)
+        plt.xticks([]) 
+        plt.yticks([])
+        #plt.xlabel(net_name+str(i))
+        j+=1
+        plt.subplots_adjust(wspace=0, hspace=0)
+
+    plt.subplot(3,9,19)
+    plt.imshow(mpimg.imread("/home/luigi/Documents/QWT/results/groundTrans/t2_qwtargan_best4_moe_1761017_0004_11.png"))
+    plt.xticks([]) 
+    plt.yticks([])
+    plt.ylabel(r"T2 $\rightarrow$ T1, CT")
+
+    #plt.xlabel("Source")
+
+    j=18
+    for i,net_name in enumerate(nets_names):
+        plt.subplot(3,9,i+2+j)
+        img = mpimg.imread('/home/luigi/Documents/QWT/results/translation/t1_'+net_name+'_0004_11.png')
+        plt.imshow(img)
+        plt.xticks([]) 
+        plt.yticks([])
+        plt.subplot(3,9,i+3+j)
+        img = mpimg.imread('/home/luigi/Documents/QWT/results/translation/ct_'+net_name+'_0004_11.png')
+        plt.imshow(img)
+        plt.xticks([]) 
+        plt.yticks([])
+        #plt.xlabel(mappa[net_name])
+        j+=1
+
+    # plt.subplot(2,2,2)
+    # plt.imshow(imgs[i])
+    # plt.subplot(2,2,3)
+    # plt.imshow(imgs[i])
+    # plt.subplots_adjust(wspace=0.05, hspace=0)
+
+    plt.text(-970, 145, 'Source', ha='center')
+    plt.text(-770, 145, 'TarGAN', ha='center')
+    plt.text(-515, 145, 'TarGAN + DWT', ha='center')
+    plt.text(-260, 145, 'TarGAN + QWT-SGS', ha='center')
+    plt.text(0, 145, 'TarGAN + QWT-MoE', ha='center')
+    line = plt.Line2D((.213,.213),(.1,.9), color="w", linewidth=2)
+    fig.add_artist(line)
+
+    line = plt.Line2D((.385,.385),(.1,.9), color="w", linewidth=2)
+    fig.add_artist(line)
+
+    line = plt.Line2D((.56,.56),(.1,.9), color="w", linewidth=2)
+    fig.add_artist(line)
+    
+    line = plt.Line2D((.73,.73),(.1,.9), color="w", linewidth=2)
+    fig.add_artist(line)
+    plt.savefig("/home/luigi/Documents/QWT/results/targan_results.pdf", dpi=300, bbox_inches="tight")
+
+# paper_sampling()

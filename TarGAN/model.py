@@ -9,7 +9,7 @@ import dataset, configs.config_tmp
 reload(dataset)
 reload(configs.config_tmp)
 from configs.config_tmp import args, device, grayscale
-print("model ",args)
+print("model ",args.seed)
 
 import torch.nn.functional as F
 

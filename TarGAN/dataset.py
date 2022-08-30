@@ -26,7 +26,7 @@ import configs.config_tmp
 reload(configs.config_tmp)
 from configs.config_tmp import args
 
-print("dataset module sees: ",args.experiment_name)
+print("dataset module sees: ", args.seed)
 from scipy.fftpack import hilbert as ht
 from six.moves import xrange
 import torch
@@ -54,7 +54,7 @@ class ChaosDataset_Syn_new(Dataset):
             [os.path.join(path2, x) for x in os.listdir(path2)])
         raw_path = []
         label_path = []
-        print(list_path)
+        # print(list_path)
 
         for x in list_path:
             if "t1" in x:
@@ -226,15 +226,15 @@ def wavelet_quat(image,image_size, modality):
         train = np.concatenate(subbands, axis=0)
         #train = torch.from_numpy(train.astype(np.float32))
         a = []
-        lst_to_iterate = []
-        if modality=="ct":
-            lst_to_iterate = args.ct_best_4
-        if modality=="t1":
-            lst_to_iterate = args.t1_best_4
-        elif modality =="t2":
-            lst_to_iterate = args.t2_best_4
-        else:
-            lst_to_iterate = args.best_4
+        lst_to_iterate = args.best_4
+        # if modality=="ct":
+        #     lst_to_iterate = args.ct_best_4
+        # if modality=="t1":
+        #     lst_to_iterate = args.t1_best_4
+        # elif modality =="t2":
+        #     lst_to_iterate = args.t2_best_4
+        # else:
+        #     lst_to_iterate = args.best_4
         for wav_num in lst_to_iterate:
             a.append(train[wav_num])
         q0,q1,q2,q3 = quat_mag_and_phase(*a)
