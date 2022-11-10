@@ -22,11 +22,12 @@ import pywt
 import pywt.data
 from itertools import chain
 from pathlib import Path
-import configs.config_tmp
-reload(configs.config_tmp)
-from configs.config_tmp import args
+# import configs.config_tmp
+# reload(configs.config_tmp)
+# from configs.config_tmp import args
 
-print("dataset module sees: ", args.seed)
+# print("dataset module sees: ", args.seed)
+from config import args
 from scipy.fftpack import hilbert as ht
 from six.moves import xrange
 import torch
@@ -237,8 +238,9 @@ def wavelet_quat(image,image_size, modality):
         #     lst_to_iterate = args.best_4
         for wav_num in lst_to_iterate:
             a.append(train[wav_num])
-        q0,q1,q2,q3 = quat_mag_and_phase(*a)
-        train = np.stack([q0,q1,q2,q3], axis = 0)
+        # q0,q1,q2,q3 = quat_mag_and_phase(*a)
+        # train = np.stack([q0,q1,q2,q3], axis = 0)
+        train = np.stack(a, axis = 0)
         return train
     else:
         q0, q1, q2, q3 = qwt(

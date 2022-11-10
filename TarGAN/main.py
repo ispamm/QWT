@@ -10,7 +10,7 @@ import numpy as np
 # from utils import build_model, load_nets
 from tqdm import tqdm
 import shutil
-from sample import sample
+#from sample import sample
 def paper(exp_names):
     seeds = [1761017,1704899, 1245135, 2058486, 123152352]
     for i in range(3):

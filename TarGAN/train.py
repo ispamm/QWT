@@ -51,16 +51,16 @@ def set_deterministic(seed=42):
     # torch.backends.cudnn.enabled = False
 
 def train(args=None):
-    if args==None:
-        from importlib import reload
-        import configs.config_tmp
-        reload(configs.config_tmp)
-        reload(utils)
-        reload(metrics)
-        reload(dataset)
-        from configs.config_tmp import args
-        print("train module sees: ",args.experiment_name)
-        set_deterministic(args.seed)
+    # if args==None:
+    #     from importlib import reload
+    #     import configs.config_tmp
+    #     reload(configs.config_tmp)
+    #     reload(utils)
+    #     reload(metrics)
+    #     reload(dataset)
+    #     from configs.config_tmp import args
+    #     print("train module sees: ",args.experiment_name)
+    #     set_deterministic(args.seed)
 
     print(args.experiment_name)
     glr = args.lr
@@ -306,7 +306,7 @@ def train(args=None):
                     args.net_name = 'netH_t'
                     save_state_net(nets.netH_t, args, i + 1, optims.h_t_optimizier)
 
-            if (i + 1) >= args.epoch:
+            if (i + 1) % args.eval_every == 0:
                 fidstar, fid, dice, ravd, s_score, fid_giov, iou_dict, IS_ignite_dict, fid_ignite_dict, mae_dict = calculate_all_metrics(nets,
                                                                                     syneval_dataset,
                                                                                     syneval_dataset2,

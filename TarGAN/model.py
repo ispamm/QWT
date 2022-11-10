@@ -4,13 +4,13 @@ from torch import nn
 
 from QGAN.utils.QSN2 import Qspectral_norm
 from QGAN.utils.quaternion_layers import QuaternionConv, QuaternionTransposeConv
-from importlib import reload
-import dataset, configs.config_tmp
-reload(dataset)
-reload(configs.config_tmp)
-from configs.config_tmp import args, device, grayscale
-print("model ",args.seed)
-
+# from importlib import reload
+# import dataset, configs.config_tmp
+# reload(dataset)
+# reload(configs.config_tmp)
+# from configs.config_tmp import args, device, grayscale
+# print("model ",args.seed)
+from config import args, device
 import torch.nn.functional as F
 
 from dataset import wavelet_wrapper
