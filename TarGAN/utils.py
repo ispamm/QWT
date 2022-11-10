@@ -10,14 +10,16 @@ import torch
 import matplotlib.pyplot as plt
 import wandb
 import torchvision.utils as vutils
-from importlib import reload
-import configs.config_tmp
-reload(configs.config_tmp)
+# from importlib import reload
+# import configs.config_tmp
+# reload(configs.config_tmp)
 
-from configs.config_tmp import args, device
-print("utils module sees: ",args.seed)
-import model
-reload(model)
+# from configs.config_tmp import args, device
+# print("utils module sees: ",args.seed)
+# import model
+# reload(model)
+from config import args, device
+
 from model import Discriminator, Generator, ShapeUNet
 
 def loss_filter(mask, device="cuda"):
@@ -173,6 +175,7 @@ def load_nets(nets):
     for net in nets.keys():
         print("loading", net)
         net_check = net if "use" in net else net.replace("_", "")
+        print(args.sepoch)
         load_state_net(nets[net], net_check, args.sepoch)
 
 
@@ -192,7 +195,8 @@ def build_model():
             not args.wavelet_net 
         ) 
         or args.wavelet_with_real_net or args.wavelet_disc_gen[1]) else 1
-    print(channels)
+    if args.is_best_4:
+        channels = 1+len(args.best_4)
     netG = Generator(in_c=channels + args.c_dim, mid_c=args.G_conv, layers=2, s_layers=3, affine=True, last_ac=True).to(
         device)
 

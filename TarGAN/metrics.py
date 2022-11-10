@@ -10,13 +10,12 @@ import torch.nn.functional as F
 import wandb
 
 from config import device
-import dataset, utils, configs.config_tmp
-from importlib import reload
-reload(dataset)
-reload(utils)
-reload(configs.config_tmp)
-from configs.config_tmp import args
-
+# from importlib import reload
+# reload(dataset)
+# reload(utils)
+# reload(configs.config_tmp)
+# from configs.config_tmp import args
+from config import args
 from dataset import ChaosDataset_Syn_Test, ChaosDataset_Syn_new, MyDataset
 from ModelsGenesis import unet3d
 from utils import build_model, load_nets, save_image, getLabel, label2onehot, save_json
@@ -921,7 +920,7 @@ def evaluation():
     syneval_loader = DataLoader(syneval_dataset4, batch_size=args.eval_batch_size,
                                 shuffle=True if args.mode != "sample" else False, collate_fn=None)  # if (
     # args.real or (not args.real and args.soup)) else convert_data_for_quaternion_tarGAN)
-    ii = args.sepoch * 650
+    ii = 11101 #args.sepoch * len(syneval_loader)
     nets, disc_c_dim = build_model()
     load_nets(nets)
     with wandb.init(config=args, project="quattargan") as run:
