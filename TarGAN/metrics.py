@@ -944,3 +944,13 @@ def evaluation():
         wandb.log(dict(fid_ignite_dict), step=ii + 1, commit=False)
         wandb.log(dict(mae_dict), step=ii + 1, commit=False)
         wandb.log(iou_dict, commit=True)
+        formatt = args.experiment_name +"                                      & {:.6f}  & {:.6f}  & {:.6f}     & {:.6f}  & {:.6f}     & {:.6f}  &  {:.6f}           \\ ".format(
+                    fid_giov["FID_giov_/mean"],
+                    (fid_ignite_dict["FID-ignite/ct_mean"]+fid_ignite_dict["FID-ignite/t1_mean"]+fid_ignite_dict["FID-ignite/t2_mean"])/3,
+                    (IS_ignite_dict["IS/ct_mean"]+IS_ignite_dict["IS/t1_mean"]+IS_ignite_dict["IS/t2_mean"])/3,
+                    (dice["DICE/ct"]+dice["DICE/t1"]+dice["DICE/t2"])/3,
+                    (s_score["S-SCORE/ct"]+s_score["S-SCORE/t1"]+s_score["S-SCORE/t2"])/3,
+                    (iou_dict["IoU/ct"]+iou_dict["IoU/t1"]+iou_dict["IoU/t2"])/3,
+                    (mae_dict["mae/ct"]+mae_dict["mae/t1"]+mae_dict["mae/t2"])/3,
+                )
+        wandb.log({"latex_string":formatt},step=ii + 1, commit=True)
