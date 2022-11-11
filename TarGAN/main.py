@@ -10,6 +10,7 @@ import numpy as np
 # from utils import build_model, load_nets
 from tqdm import tqdm
 import shutil
+import argparse
 #from sample import sample
 def paper(exp_names):
     seeds = [1761017,1704899, 1245135, 2058486, 123152352]
@@ -55,6 +56,15 @@ def set_deterministic(seed=42):
 
 if __name__ == '__main__':
     from config import args
+
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--mode', type=str, default="train",help='an integer for the accumulator')
+    parser.add_argument('--seed', type=int, default=42,help='an integer for the accumulator')
+    parser.add_argument('--experiment_name', type=str, default="TEST_qwtargan_novel_best",help='an integer for the accumulator')
+    args_parsed = parser.parse_args()
+    args.seed = args_parsed.seed
+    args.mode= args_parsed.mode
+    args.experiment_name = args_parsed.experiment_name+str(len(args.best_4))+"_moe"+str(args.seed) 
     set_deterministic(args.seed)
     print(args)
     if args.mode == "train":

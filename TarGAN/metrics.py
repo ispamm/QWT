@@ -943,7 +943,7 @@ def evaluation():
         wandb.log(dict(IS_ignite_dict), step=ii + 1, commit=False)
         wandb.log(dict(fid_ignite_dict), step=ii + 1, commit=False)
         wandb.log(dict(mae_dict), step=ii + 1, commit=False)
-        wandb.log(iou_dict, commit=True)
+        wandb.log(iou_dict, commit=False)
         formatt = args.experiment_name +"                                      & {:.6f}  & {:.6f}  & {:.6f}     & {:.6f}  & {:.6f}     & {:.6f}  &  {:.6f}           \\ ".format(
                     fid_giov["FID_giov_/mean"],
                     (fid_ignite_dict["FID-ignite/ct_mean"]+fid_ignite_dict["FID-ignite/t1_mean"]+fid_ignite_dict["FID-ignite/t2_mean"])/3,
