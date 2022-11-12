@@ -65,6 +65,8 @@ if __name__ == '__main__':
     args.seed = args_parsed.seed
     args.mode= args_parsed.mode
     args.experiment_name = args_parsed.experiment_name+str(len(args.best_4))+"_moe"+str(args.seed) 
+    if args.mode =='eval' and args.sepoch==0:
+        args.sepoch=50
     set_deterministic(args.seed)
     print(args)
     if args.mode == "train":
