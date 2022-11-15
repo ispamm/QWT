@@ -20,7 +20,7 @@ spectral = True
 target_real = False
 shape_network_sep_target = False
 is_best_4 = True
-best_4 = [0,11,13, 7]
+best_4 = [11,0]
 
 t1_best_4 = [0, 4, 10, 11]
 t2_best_4 = [0, 4, 5, 10]

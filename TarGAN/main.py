@@ -61,8 +61,10 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default="train",help='an integer for the accumulator')
     parser.add_argument('--seed', type=int, default=42,help='an integer for the accumulator')
     parser.add_argument('--experiment_name', type=str, default="TEST_qwtargan_novel_best",help='an integer for the accumulator')
+    parser.add_argument('--best_4', nargs='+', help='<Required> Set flag', default=0)
     args_parsed = parser.parse_args()
     args.seed = args_parsed.seed
+    args.best_4 = list(map(int, args_parsed.best_4))
     args.mode= args_parsed.mode
     args.experiment_name = args_parsed.experiment_name+str(len(args.best_4))+"_moe"+str(args.seed) 
     if args.mode =='eval' and args.sepoch==0:
