@@ -101,7 +101,7 @@ def train(args=None):
     start_time = time.time()
     print('start training...')
     ii = 0  # 22127 #25 epoch =
-    with wandb.init(config=args, project="quattargan") as run:
+    with wandb.init(config=args, project="wtargan") as run:
         wandb.run.name = args.experiment_name
         for i in tqdm(range(args.sepoch, args.epoch), initial=args.sepoch, total=args.epoch):
             for epoch, ((x_real, wavelets_img), (t_img, wavelets_target), shape_mask, mask, label_org) in tqdm(
