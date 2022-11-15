@@ -60,13 +60,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--mode', type=str, default="train",help='an integer for the accumulator')
     parser.add_argument('--seed', type=int, default=42,help='an integer for the accumulator')
-    parser.add_argument('--experiment_name', type=str, default="TEST_qwtargan_novel_best",help='an integer for the accumulator')
+    parser.add_argument('--experiment_name', type=str, default="qwtargan_novel_best_",help='an integer for the accumulator')
     parser.add_argument('--best_4', nargs='+', help='<Required> Set flag', default=0)
     args_parsed = parser.parse_args()
     args.seed = args_parsed.seed
     args.best_4 = list(map(int, args_parsed.best_4))
     args.mode= args_parsed.mode
-    args.experiment_name = args_parsed.experiment_name+str(len(args.best_4))+"_moe"+str(args.seed) if "TEST" in args_parsed.experiment_name else args.experiment_name
+    args.experiment_name = args_parsed.experiment_name+str(len(args.best_4))+"_moe_"+str(args.seed) #if "TEST" in args_parsed.experiment_name else args.experiment_name
     if args.mode =='eval' and args.sepoch==0:
         args.sepoch=50
     set_deterministic(args.seed)
