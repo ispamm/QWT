@@ -923,7 +923,7 @@ def evaluation():
     ii = 11101 #args.sepoch * len(syneval_loader)
     nets, disc_c_dim = build_model()
     load_nets(nets)
-    with wandb.init(config=args, project="quattargan") as run:
+    with wandb.init(config=args, project="wtargan") as run:
         wandb.run.name = args.experiment_name
         fidstar, fid, dice, ravd, s_score, fid_giov, iou_dict, IS_ignite_dict, fid_ignite_dict, mae_dict = calculate_all_metrics(
             nets,
