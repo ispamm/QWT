@@ -11,6 +11,8 @@ import numpy as np
 from tqdm import tqdm
 import shutil
 import argparse
+
+from utils import set_deterministic
 #from sample import sample
 def paper(exp_names):
     seeds = [1761017,1704899, 1245135, 2058486, 123152352]
@@ -40,16 +42,7 @@ def paper(exp_names):
             sample(nets, experiment=[file_name[7:-3]+"_"+str(seed)])
 
 
-def set_deterministic(seed=42):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
 
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    # torch.backends.cudnn.enabled = False
 
 
 # device = torch.device("cuda:1,3" if torch.cuda.is_available() else "cpu") ## specify the GPU id's, GPU id's start from 0.
@@ -60,7 +53,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--mode', type=str, default="train",help='an integer for the accumulator')
     parser.add_argument('--seed', type=int, default=42,help='an integer for the accumulator')
-    parser.add_argument('--experiment_name', type=str, default="qwtargan_novel_best_",help='an integer for the accumulator')
+    parser.add_argument('--experiment_name', type=str, default="choas_qwtargan_novel_best_",help='an integer for the accumulator')
     parser.add_argument('--best_4', nargs='+', help='<Required> Set flag', default=0)
     args_parsed = parser.parse_args()
     args.seed = args_parsed.seed

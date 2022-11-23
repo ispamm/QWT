@@ -5,11 +5,10 @@ import torch
 import wandb
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-import utils,metrics,dataset
 from config import device, grayscale
 from dataset import ChaosDataset_Syn_new, ChaosDataset_Syn_Test
 from metrics import calculate_all_metrics
-from utils import build_model, build_optims, load_nets, print_network, set_seed, loss_filter, label2onehot, \
+from utils import build_model, build_optims, load_nets, print_network, loss_filter, label2onehot, \
     gradient_penalty, denorm, moving_average, \
     plot_images, save_state_net
 import torch.nn.functional as F
@@ -37,19 +36,6 @@ def convert_data_for_quaternion_tarGAN(batch):
            torch.stack(mask), \
            torch.LongTensor(label_org)
 
-def set_deterministic(seed=42):
-    import random
-    import numpy as np
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    # torch.backends.cudnn.enabled = False
-
 def train(args=None):
     # if args==None:
     #     from importlib import reload
@@ -65,7 +51,6 @@ def train(args=None):
     print(args.experiment_name)
     glr = args.lr
     dlr = args.ttur
-    set_seed(args.random_seed)
     if args.mode == "train":
         syn_dataset = ChaosDataset_Syn_new(path=args.dataset_path, split='train', modals=args.modals,
                                            image_size=args.image_size)

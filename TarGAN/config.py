@@ -20,13 +20,13 @@ spectral = True
 target_real = False
 shape_network_sep_target = False
 is_best_4 = True
-best_4 = [11,0]
+best_4 = [0,1]
 
 t1_best_4 = [0, 4, 10, 11]
 t2_best_4 = [0, 4, 5, 10]
 ct_best_4 = [0, 2, 3, 4]
 seed = 1761017
-experiment_name = "qwtargan_novel_best_"+str(len(best_4))+"_moe"+str(seed)  # @param {type:"string"}
+experiment_name = "qwtargan_inverted_novel"+str(seed) #"qwtargan_novel_best_"+str(len(best_4))+"_moe"+str(seed)  # @param {type:"string"}
 mode = "train"  # @param ["train", "eval","sample"]
 sepoch = 0  # @param {type:"integer"}
 gpu_num = 0
@@ -51,7 +51,6 @@ args = munch.Munch({
     "loss_function": "wgan-gp+move+cycle+ugan+d+l2",
     "optimizer": "adam",
     "note": "affine:True;",
-    "random_seed": seed,
     "log_every": 10,
     "print_every": 10,
     "save_every": 50,
