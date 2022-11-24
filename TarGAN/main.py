@@ -54,12 +54,14 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default="train",help='an integer for the accumulator')
     parser.add_argument('--seed', type=int, default=42,help='an integer for the accumulator')
     parser.add_argument('--experiment_name', type=str, default="choas_qwtargan_novel_best_",help='an integer for the accumulator')
-    parser.add_argument('--best_4', nargs='+', help='<Required> Set flag', default=0)
+    parser.add_argument('--wavelet_type', type=str, default="quat",help='an integer for the accumulator')
+    parser.add_argument('--best_4', nargs='+', help='<Required> Set flag', default=[0])
     args_parsed = parser.parse_args()
     args.seed = args_parsed.seed
-    args.best_4 = list(map(int, args_parsed.best_4))
+    args.wavelet_type = args_parsed.wavelet_type
+    args.best_4 = list(map(int, args_parsed.best_4)) if args.wavelet_type =='quat' else []
     args.mode= args_parsed.mode
-    args.experiment_name = args_parsed.experiment_name+str(len(args.best_4))+"_moe_"+str(args.seed) #if "TEST" in args_parsed.experiment_name else args.experiment_name
+    args.experiment_name = args_parsed.experiment_name+str(len(args.best_4))+"_moe_"+str(args.seed) if "qwtargan" in args_parsed.experiment_name else args_parsed.experiment_name + '_' +str(args.seed)
     if args.mode =='eval' and args.sepoch==0:
         args.sepoch=50
     set_deterministic(args.seed)

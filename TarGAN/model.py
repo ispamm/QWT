@@ -10,7 +10,7 @@ from QGAN.utils.quaternion_layers import QuaternionConv, QuaternionTransposeConv
 # reload(configs.config_tmp)
 # from configs.config_tmp import args, device, grayscale
 # print("model ",args.seed)
-from config import args, device
+from config import args, device, grayscale
 import torch.nn.functional as F
 
 from dataset import wavelet_wrapper

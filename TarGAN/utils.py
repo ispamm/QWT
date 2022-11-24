@@ -197,7 +197,7 @@ def build_model():
             not args.wavelet_net 
         ) 
         or args.wavelet_with_real_net or args.wavelet_disc_gen[1]) else 1
-    if args.is_best_4:
+    if args.is_best_4 and args.wavelet_type=='quat':
         channels = 1+len(args.best_4)
     netG = Generator(in_c=channels + args.c_dim, mid_c=args.G_conv, layers=2, s_layers=3, affine=True, last_ac=True).to(
         device)
