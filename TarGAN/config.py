@@ -10,7 +10,7 @@ last_layer_gen_real = True  # @param ["True", "False"] {type:"raw"}
 wavelet_with_real_net = False
 wavelet_disc_gen = (False, True, False) #disc gen shape_controller
 wavelet_target = False #wavelet also on segmented image
-wavelet_type = "quat" #@param ["real", "quat"]
+wavelet_type = "dwt-fusion" #@param ["real", "quat", 'fusion']
 wavelet_quat_type = "low" #low or whatever (ele method)
 wavelet_net = False
 wavelet_net_real = False
@@ -19,7 +19,7 @@ wavelet_net_target_real = False
 spectral = True
 target_real = False
 shape_network_sep_target = False
-is_best_4 = True
+is_best_4 = False
 best_4 = [0,1]
 
 t1_best_4 = [0, 4, 10, 11]

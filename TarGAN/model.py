@@ -413,13 +413,15 @@ class Discriminator(nn.Module):
 
 @torch.no_grad()
 def create_wavelet_from_input_tensor(inputs, mods):
-    modalities = ["t1" if mods[i][0].any()==1 else "t2" if mods[i][1].any()==1 else "ct" for i in range(mods.size(0))]
-    lst = [
-        torch.from_numpy(wavelet_wrapper(chunk.squeeze().cpu().detach().numpy(), chunk.size(2), modalities[i])).type(torch.FloatTensor)
-        for i,chunk in
-        enumerate(torch.split(inputs.detach(), 1, dim=0))]
-    return torch.stack(lst, dim=0).to(device)
-
+    if 'fusion' not in args.wavelet_type:
+        modalities = ["t1" if mods[i][0].any()==1 else "t2" if mods[i][1].any()==1 else "ct" for i in range(mods.size(0))]
+        lst = [
+            torch.from_numpy(wavelet_wrapper(chunk.squeeze().cpu().detach().numpy(), chunk.size(2), modalities[i])).type(torch.FloatTensor)
+            for i,chunk in
+            enumerate(torch.split(inputs.detach(), 1, dim=0))]
+        return torch.stack(lst, dim=0).to(device)
+    else:
+        return wavelet_wrapper(inputs,inputs.size(2))
 '''
 Generator
 '''
@@ -504,9 +506,7 @@ class Generator(nn.Module):
         #    img_target_wavelet = torch.cat([img_target, wavelet_img], dim=1)
         # print('gen - img5')
         # add wavelet to img_target so now tensor is (1real+3target,4wavelets) = 8 channels so 2 quaternion
-        if args.wavelet_net:
-            print()
-        elif img.size(1) == 1 and args.wavelet_disc_gen[1]:
+        if not args.wavelet_net and img.size(1) == 1 and args.wavelet_disc_gen[1]:
             img_target = torch.cat([img_target, create_wavelet_from_input_tensor(img, c)], dim=1)
             # img_target = torch.cat([img_target, torch.randn(1, 4, 64, 64).requires_grad_(img.requires_grad)], dim=1)
             # print('gen - img1')

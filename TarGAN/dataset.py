@@ -27,13 +27,13 @@ from pathlib import Path
 # from configs.config_tmp import args
 
 # print("dataset module sees: ", args.seed)
-from config import args
+from config import args, device
 from scipy.fftpack import hilbert as ht
 from six.moves import xrange
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from imageio import imread
+import sys
 
 def listdir(dname):
     fnames = list(chain(*[list(Path(dname).rglob('*.' + ext))
@@ -198,8 +198,40 @@ def wavelet_wrapper(img, img_size, modality=None):
         return wavelet_real(img,img_size)
     elif args.wavelet_type == 'quat':
         return wavelet_quat(img,img_size, modality)
+    elif 'fusion' in args.wavelet_type:
+        return image_fusion_preprocess(img)
     else:
         raise Exception
+
+sys.path.append('/home/luigi/Documents/tests/')
+# if args.wavelet_type== 'fusion':
+#     from pl_image_fusion import ImageFusionNetworkPL
+#     model_IF = ImageFusionNetworkPL.load_from_checkpoint("/home/luigi/Documents/tests/results/checkpoints/IFN-IXI-epoch=399-psnr=28.73.ckpt").to(device)
+#     model_IF.eval()
+# elif args.wavelet_type=='dwt-fusion':
+from image_fusion import ImageFusionNetwork
+model_IF = ImageFusionNetwork(in_channels=1, out_channels=1,wavelet_type='dwt').to(device)
+str_path = "/home/luigi/Documents/tests/results/checkpoints/model.pt"
+model_IF.load_state_dict(torch.load(str_path))
+model_IF.eval()
+
+def image_fusion_preprocess(img):
+    def get_activation(name,activation_json):
+        def hook(model, input, output):
+            activation_json[name] = output.detach()
+        return hook
+
+    activation_json = {}
+    # if wavelet_type =="dwt":
+    return_string = "WTM.last_weights"
+    model_IF.WTM.last_weights.register_forward_hook(get_activation(return_string,activation_json))
+    # else:
+    #     return_string = 'WTM.qwt_last_weights'
+    #     model_IF.WTM.qwt_last_weights.register_forward_hook(get_activation(return_string,activation_json))
+
+    output = model_IF(img)
+
+    return activation_json[return_string]
 
 
 @torch.no_grad()
