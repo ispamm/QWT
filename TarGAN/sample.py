@@ -16,7 +16,7 @@ from tqdm import tqdm
 from config import args, device
 from train import build_model, build_optims, load_nets
 from utils import label2onehot, getLabel, save_image
-
+PATH = "/media/luigi/Data/Server_backup/QWT/TarGAN/results/"
 
 def sample(nets=None, experiment=["parcollet_nuoovo", "phm_nuoovo"],):
     mod = ["t1", "t2", "ct"]
@@ -27,9 +27,10 @@ def sample(nets=None, experiment=["parcollet_nuoovo", "phm_nuoovo"],):
     for exp in tqdm(experiment):
 
         start_time = time.time()
-        # nets, _ = build_model()
-        # #optims = build_optims(nets)
-        # load_nets(nets)
+        if nets is None:
+            nets, _ = build_model()
+            # #optims = build_optims(nets)
+            load_nets(nets)
         print(exp)
         # os.makedirs("results/translation/"+exp)
         # os.makedirs("results/segmentation/"+exp)
@@ -120,7 +121,7 @@ def paper_sampling(randint,randint2, nets_names=['targan_1245135', 'wtargan_1245
 
     plt.axis('off')
     plt.subplot(3,9,1)
-    plt.imshow(mpimg.imread("/home/luigi/Documents/QWT/TarGAN/results/groundTrans/ct_qwtargan_best4_moe_1245135_000"+randint[0]+"_"+randint2[0]+".png"))
+    plt.imshow(mpimg.imread(PATH+"groundTrans/ct_qwtargan_best4_moe_1245135_000"+randint[0]+"_"+randint2[0]+".png"))
     plt.xticks([]) 
     plt.yticks([])
     plt.ylabel(r"CT $\rightarrow$ T1, T2")
@@ -128,12 +129,12 @@ def paper_sampling(randint,randint2, nets_names=['targan_1245135', 'wtargan_1245
     j=0
     for i,net_name in enumerate(nets_names):
         plt.subplot(3,9,i+2+j)
-        img = mpimg.imread('/home/luigi/Documents/QWT/TarGAN/results/translation/t1_'+net_name+'_000'+randint[0]+"_"+randint2[0]+'.png')
+        img = mpimg.imread(PATH+'translation/t1_'+net_name+'_000'+randint[0]+"_"+randint2[0]+'.png')
         plt.imshow(img)
         plt.xticks([]) 
         plt.yticks([])
         plt.subplot(3,9,i+3+j)
-        img = mpimg.imread('/home/luigi/Documents/QWT/TarGAN/results/translation/t2_'+net_name+'_000'+randint[0]+"_"+randint2[0]+'.png')
+        img = mpimg.imread(PATH+'translation/t2_'+net_name+'_000'+randint[0]+"_"+randint2[0]+'.png')
         plt.imshow(img)        #plt.xlabel(net_name+str(i))
         plt.xticks([]) 
         plt.yticks([])
@@ -141,7 +142,7 @@ def paper_sampling(randint,randint2, nets_names=['targan_1245135', 'wtargan_1245
         plt.subplots_adjust(wspace=0, hspace=0)
 
     plt.subplot(3,9,10)
-    plt.imshow(mpimg.imread("/home/luigi/Documents/QWT/TarGAN/results/groundTrans/t1_qwtargan_best4_moe_1245135_000"+randint[1]+"_"+randint2[1]+".png"))
+    plt.imshow(mpimg.imread(PATH+"groundTrans/t1_qwtargan_best4_moe_1245135_000"+randint[1]+"_"+randint2[1]+".png"))
     plt.xticks([]) 
     plt.yticks([])
     plt.ylabel(r"T1 $\rightarrow$ T2, CT")
@@ -149,12 +150,12 @@ def paper_sampling(randint,randint2, nets_names=['targan_1245135', 'wtargan_1245
     j=9
     for i,net_name in enumerate(nets_names):
         plt.subplot(3,9,i+2+j)
-        img = mpimg.imread('/home/luigi/Documents/QWT/TarGAN/results/translation/t2_'+net_name+'_000'+randint[1]+"_"+randint2[1]+'.png')
+        img = mpimg.imread(PATH+'translation/t2_'+net_name+'_000'+randint[1]+"_"+randint2[1]+'.png')
         plt.imshow(img)
         plt.xticks([]) 
         plt.yticks([])
         plt.subplot(3,9,i+3+j)
-        img = mpimg.imread('/home/luigi/Documents/QWT/TarGAN/results/translation/ct_'+net_name+'_000'+randint[1]+"_"+randint2[1]+'.png')
+        img = mpimg.imread(PATH+'translation/ct_'+net_name+'_000'+randint[1]+"_"+randint2[1]+'.png')
         plt.imshow(img)
         plt.xticks([]) 
         plt.yticks([])
@@ -163,7 +164,7 @@ def paper_sampling(randint,randint2, nets_names=['targan_1245135', 'wtargan_1245
         plt.subplots_adjust(wspace=0, hspace=0)
 
     plt.subplot(3,9,19)
-    plt.imshow(mpimg.imread("/home/luigi/Documents/QWT/TarGAN/results/groundTrans/t2_qwtargan_best4_moe_1245135_000"+randint[2]+"_"+randint2[2]+".png"))
+    plt.imshow(mpimg.imread(PATH+"groundTrans/t2_qwtargan_best4_moe_1245135_000"+randint[2]+"_"+randint2[2]+".png"))
     plt.xticks([]) 
     plt.yticks([])
     plt.ylabel(r"T2 $\rightarrow$ T1, CT")
@@ -173,12 +174,12 @@ def paper_sampling(randint,randint2, nets_names=['targan_1245135', 'wtargan_1245
     j=18
     for i,net_name in enumerate(nets_names):
         plt.subplot(3,9,i+2+j)
-        img = mpimg.imread('/home/luigi/Documents/QWT/TarGAN/results/translation/t1_'+net_name+'_000'+randint[2]+"_"+randint2[2]+'.png')
+        img = mpimg.imread(PATH+'translation/t1_'+net_name+'_000'+randint[2]+"_"+randint2[2]+'.png')
         plt.imshow(img)
         plt.xticks([]) 
         plt.yticks([])
         plt.subplot(3,9,i+3+j)
-        img = mpimg.imread('/home/luigi/Documents/QWT/TarGAN/results/translation/ct_'+net_name+'_000'+randint[2]+"_"+randint2[2]+'.png')
+        img = mpimg.imread(PATH+'translation/ct_'+net_name+'_000'+randint[2]+"_"+randint2[2]+'.png')
         plt.imshow(img)
         plt.xticks([]) 
         plt.yticks([])
@@ -196,7 +197,7 @@ def paper_sampling(randint,randint2, nets_names=['targan_1245135', 'wtargan_1245
     plt.text(-270, 145, 'TarGAN + DWT', ha='center')
     # plt.text(-260, 145, 'TarGAN + QWT-SGS', ha='center')
     # plt.text(10, 145, 'TarGAN + QWT-MoE', ha='center')
-    plt.text(10, 145, 'TarGAN + QWT-SGS', ha='center')
+    plt.text(10, 145, 'TarGAN + QWT', ha='center')
     line = plt.Line2D((.213,.213),(.1,.9), color="w", linewidth=2)
     fig.add_artist(line)
 
@@ -208,17 +209,17 @@ def paper_sampling(randint,randint2, nets_names=['targan_1245135', 'wtargan_1245
     
     # line = plt.Line2D((.73,.73),(.1,.9), color="w", linewidth=2)
     # fig.add_artist(line)
-    plt.savefig("/home/luigi/Documents/QWT/TarGAN/results/targan_results_"+randint2[0]+randint[1]+".png", dpi=300, bbox_inches="tight")
+    plt.savefig(PATH+"targan_results_"+randint2[0]+randint[1]+".png", dpi=300, bbox_inches="tight")
     print("targan_results_"+randint2[0]+randint[1], "\n")
     print(randint, "\n", randint2)
     print("----------------------------")
 
 
-import random
-for i in range(20):
-    # paper_sampling([str(random.randint(1,7)).zfill(1), str(random.randint(1,7)).zfill(1), str(random.randint(1,7)).zfill(1)], 
-    #                 [str(random.randint(23,30)).zfill(2),str(random.randint(1,10)).zfill(2),str(random.randint(10,20)).zfill(2)])
+# import random
+# for i in range(20):
+#     # paper_sampling([str(random.randint(1,7)).zfill(1), str(random.randint(1,7)).zfill(1), str(random.randint(1,7)).zfill(1)], 
+#     #                 [str(random.randint(23,30)).zfill(2),str(random.randint(1,10)).zfill(2),str(random.randint(10,20)).zfill(2)])
 
-    paper_sampling(
-    ['3', '1', '1'], 
- ['30', '08', '16'])
+#     paper_sampling(
+#     ['3', '1', '1'], 
+#  ['30', '08', '16'])

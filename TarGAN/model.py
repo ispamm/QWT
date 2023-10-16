@@ -366,7 +366,6 @@ class Discriminator(nn.Module):
             else:
                 self.conv1 = nn.Conv2d(curr_dim, 1, kernel_size=3, stride=1, padding=1, bias=False)
                 self.conv2 = nn.Conv2d(curr_dim, c_dim, kernel_size=kernel_size, bias=False)
-
         self.target = target
 
     def forward(self, x_real, wavelets=torch.zeros(1)):

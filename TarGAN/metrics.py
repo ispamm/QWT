@@ -44,12 +44,13 @@ def calculate_pytorch_fid():
         mod = [m for m in args.modals if m != p[-2:]]
         ls = 0
         for src in mod:
-            print("evaluating " + src + " to " + p[-2:])
+            print("TORCH FID evaluating " + src + " to " + p[-2:])
             eval_path = eval_root + src + " to " + p[-2:]
             dev = f"cuda:{str(args.gpu_num)}" if args.gpu_num>-1 else "cpu"
             x = str(subprocess.check_output(f'python -m pytorch_fid "{p}" "{eval_path}" --device {dev} --batch-size {args.eval_batch_size}',
                 shell=True))
-            x = x.split(' ')[-1][:-3]
+            print(x,x.split(' ')[-1][:-5])
+            x = x.split(' ')[-1][:-5]
             fid_scores["FID/" + src + " to " + p[-2:]] = float(x)
             ls += float(x)
         fid_scores["FID/" + p[-2:] + "_mean"] = ls / len(mod)
@@ -99,7 +100,7 @@ def calculate_ignite_fid():
         mod = [m for m in args.modals if m != p[-2:]]
         ls = 0
         for src in mod:
-            print("evaluating " + src + " to " + p[-2:])
+            print("IGNITE FID evaluating " + src + " to " + p[-2:])
             eval_path = eval_root + src + " to " + p[-2:]
             true, pred = png_series_reader(p), png_series_reader(eval_path)
             if pred.shape[0] < true.shape[0]:
@@ -122,7 +123,7 @@ def calculate_ignite_inception_score():
         mod = [m for m in args.modals if m != p[-2:]]
         ls = 0
         for src in mod:
-            print("evaluating " + src + " to " + p[-2:])
+            print("IGNITE IS evaluating " + src + " to " + p[-2:])
             eval_path = eval_root + src + " to " + p[-2:]
             pred = png_series_reader(eval_path)
             x = inception_score_ignite(pred)
@@ -803,7 +804,9 @@ def calculate_FID_Giovanni_given_images(group_of_images, ground_of_images):
     for x_real, x_fake in zip(group_of_images, ground_of_images):
         if x_real.size(0) < 16:
             return 0
-        x_real, x_fake = x_real.reshape(1, 128, 128, 16), x_fake.reshape(1, 128, 128, 16)
+        #x_real, x_fake = x_real.reshape(1, 128, 128, 16), x_fake.reshape(1, 128, 128, 16)
+        x_real, x_fake = x_real.reshape(1, 256, 256, 16), x_fake.reshape(1, 256, 256, 16)
+
         x_real, x_fake = x_real.unsqueeze(1).float(), x_fake.unsqueeze(1).float()
         fea_real.append(target_model(x_real))
         fea_fake.append(target_model(x_fake))
@@ -853,22 +856,27 @@ def compute_miou(validation_pred, validation_true):
 
 def calculate_all_metrics(nets, syneval_dataset, syneval_dataset2, syneval_dataset3, syneval_loader, fid_png=False):
     _, fid_stargan = calculate_metrics(nets, args, args.sepoch, '',
-                                       syneval_dataset,
-                                       syneval_dataset2,
-                                       syneval_dataset3)
-    try:
-        fid_dict = calculate_pytorch_fid()
-        fid_ignite_dict = calculate_ignite_fid()
-        IS_ignite_dict = calculate_ignite_inception_score()
-    except Exception as e:
-        print("Error ----->>>" ,e)
-        fid_dict, fid_ignite_dict, IS_ignite_dict = {}, {}, {}
+                                        syneval_dataset,
+                                        syneval_dataset2,
+                                        syneval_dataset3)
+    
+    #print("fid_stargan",fid_stargan)
+
+    fid_dict = calculate_pytorch_fid()
+    #print("fid_dict",fid_dict)
+    fid_ignite_dict = calculate_ignite_fid()
+    #print("fid_ignite_dict",fid_ignite_dict)
+
+    IS_ignite_dict = calculate_ignite_inception_score()
+    #print("is_ignite_dict",IS_ignite_dict)
 
     mod = ["t1", "t2", "ct"]
     fid_giov = calculate_FID_Giov(nets, args, args.sepoch, '',
                                   syneval_dataset,
                                   syneval_dataset2,
                                   syneval_dataset3)
+    #print("fid_giov",fid_giov)
+
     dice_dict, ravd_dict, s_score_dict, iou_dict, mae_dict = {}, {}, {}, {}, {}
 
     for i in range(3):  # 3 domains

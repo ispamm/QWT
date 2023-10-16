@@ -203,17 +203,16 @@ def wavelet_wrapper(img, img_size, modality=None):
     else:
         raise Exception
 
-sys.path.append('/home/luigi/Documents/tests/')
-# if args.wavelet_type== 'fusion':
-#     from pl_image_fusion import ImageFusionNetworkPL
-#     model_IF = ImageFusionNetworkPL.load_from_checkpoint("/home/luigi/Documents/tests/results/checkpoints/IFN-IXI-epoch=399-psnr=28.73.ckpt").to(device)
-#     model_IF.eval()
-# elif args.wavelet_type=='dwt-fusion':
-from image_fusion import ImageFusionNetwork
-model_IF = ImageFusionNetwork(in_channels=1, out_channels=1,wavelet_type='dwt').to(device)
-str_path = "/home/luigi/Documents/tests/results/checkpoints/model.pt"
-model_IF.load_state_dict(torch.load(str_path))
+# # if args.wavelet_type== 'fusion':
+from pl_image_fusion import ImageFusionNetworkPL
+model_IF = ImageFusionNetworkPL.load_from_checkpoint("pretrained_weights/IFN-IXI-qwt-epoch=399-psnr=28.71.ckpt", map_location=device).to(device) 
 model_IF.eval()
+# elif args.wavelet_type=='dwt-fusion':
+# from image_fusion import ImageFusionNetwork
+# model_IF = ImageFusionNetwork(in_channels=1, out_channels=1,wavelet_type='dwt').to(device)
+# str_path = "/home/luigi/Documents/tests/results/checkpoints/model.pt"
+# model_IF.load_state_dict(torch.load(str_path))
+# model_IF.eval()
 
 def image_fusion_preprocess(img):
     def get_activation(name,activation_json):
@@ -232,6 +231,7 @@ def image_fusion_preprocess(img):
     output = model_IF(img)
 
     return activation_json[return_string]
+
 
 
 @torch.no_grad()
@@ -952,3 +952,30 @@ def make_dataset_consistent(mr_dir="/content/drive/MyDrive/Thesis/Datasets/chaos
 #         save_image(x_real[k], ncol=1, filename=filename)
 # TESTSET
 # make_dataset_consistent("/content/drive/MyDrive/Thesis/Datasets/chaos2019/test/MR/","/content/drive/MyDrive/Thesis/Datasets/chaos2019/test/")
+
+
+if __name__=="__main__":
+    from torchvision.io import read_image
+    import torchvision.transforms as T
+    import matplotlib.pyplot as plt
+    import time
+    from qwt import QWTForward
+    img = read_image('/home/luigi/Documents/0001_01.png').float()[:1,:,:]
+    img = img.to(device)
+    qwt_as = QWTForward("cuda")
+    start = time.time()
+    wav = image_fusion_preprocess(img.unsqueeze(dim=0))
+    end = time.time()
+    print(end - start)
+    start = time.time()
+    wavelets = qwt_as(img.unsqueeze(dim=0))
+    end = time.time()
+    print(end - start)
+    start = time.time()
+    wavelets = wavelet_quat(img.cpu(),128,None)
+    end = time.time()
+    print(end - start)
+    # for img in wav.squeeze():
+    #     print(img.shape)
+    #     plt.imshow(img.cpu(), cmap='gray')
+    #     plt.show()

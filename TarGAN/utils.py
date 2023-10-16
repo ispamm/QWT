@@ -147,13 +147,13 @@ def plot_images(netG_use, i, syneval_dataset, syneval_dataset2, syneval_dataset3
         plt.subplot(244)
         plt.imshow(denorm(pred_t3_img).squeeze().cpu().numpy(), cmap='gray')
         plt.title('pred_x3')
-        plt.show()
+        #plt.show()
         x_concat = [denorm(img).squeeze().cpu(),
                     denorm(pred_t1_img).squeeze().cpu(),
                     denorm(pred_t2_img).squeeze().cpu(),
                     denorm(pred_t3_img).squeeze().cpu()]
         x_concat = torch.cat(x_concat, dim=0)
-        plt.close(fig)
+        #plt.close(fig)
     return x_concat
 
 
@@ -199,6 +199,7 @@ def build_model():
         or args.wavelet_with_real_net or args.wavelet_disc_gen[1]) else 1
     if args.is_best_4 and args.wavelet_type=='quat' and args.wavelet_disc_gen[1]:
         channels = 1+len(args.best_4)
+    
     netG = Generator(in_c=channels + args.c_dim, mid_c=args.G_conv, layers=2, s_layers=3, affine=True, last_ac=True).to(
         device)
 

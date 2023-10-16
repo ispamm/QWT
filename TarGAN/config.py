@@ -7,15 +7,18 @@ real = True  # @param ["True", "False"] {type:"raw"}
 soup = False  # @param ["True", "False"] {type:"raw"}
 share_net_real = True  # @param ["True", "False"] {type:"raw"}
 last_layer_gen_real = True  # @param ["True", "False"] {type:"raw"}
+
+#wavelets config
 wavelet_with_real_net = False
 wavelet_disc_gen = (False, True, False) #disc gen shape_controller
 wavelet_target = False #wavelet also on segmented image
-wavelet_type = "dwt-fusion" #@param ["real", "quat", 'fusion']
+wavelet_type = "q" #@param ["real", "quat", 'fusion']
 wavelet_quat_type = "low" #low or whatever (ele method)
 wavelet_net = False
 wavelet_net_real = False
 wavelet_net_target = False
 wavelet_net_target_real = False
+
 spectral = True
 target_real = False
 shape_network_sep_target = False
@@ -43,7 +46,7 @@ args = munch.Munch({
     "batch_size": 16,
     "eval_batch_size": 16,
     "gan_version": "Generator[2/3]+shapeunet+D",
-    "image_size": 128,  # 256
+    "image_size": 256,  # 256
     "epoch": 50,
     "sepoch": sepoch,
     "modals": ('t1', 't2', 'ct'),
@@ -96,4 +99,4 @@ args = munch.Munch({
 
 grayscale = transforms.Grayscale(num_output_channels=1)
 
-device = torch.device('cuda:' + str(args.gpu_num) if args.gpu_num > -1 else 'cpu')
+device = torch.device('cuda:' + str(args.gpu_num) if torch.cuda.is_available() else 'cpu')
