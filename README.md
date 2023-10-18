@@ -1,8 +1,6 @@
 # Quaternion Wavelet Transform for Neural Models in Medical Imaging
 
-This repository is under construction.
-
-[Luigi Sigillo](), [Eleonora Grassucci](), [Aurelio Uncini](), and [Danilo Comminiello]()
+[Luigi Sigillo](https://luigisigillo.github.io/), [Eleonora Grassucci](https://sites.google.com/uniroma1.it/eleonoragrassucci/), [Aurelio Uncini](http://www.uncini.com/), and [Danilo Comminiello](http://danilocomminiello.site.uniroma1.it/)
 
 ## Generalizing Medical Image Representations via Quaternion Wavelet Networks
 
@@ -26,6 +24,8 @@ year = {2023},
 ## GROUSE: A Task and Model Agnostic Wavelet-Driven Framework for Medical Imaging
 
 Official implementation of [GROUSE: A Task and Model Agnostic Wavelet-Driven Framework for Medical Imaging](https://ieeexplore.ieee.org/abstract/document/10268972), IEEE Signal Processing Letters, 2023.
+
+![Grouse framework](https://ieeexplore.ieee.org/mediastore_new/IEEE/content/media/97/10036333/10268972/grass2-3321554-large.gif)
 
 #### Abstract
 
