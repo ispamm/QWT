@@ -11,6 +11,11 @@ from scipy.fftpack import hilbert as ht
 import sys
 import matplotlib.pyplot as plt
 from scipy.fftpack import  ihilbert as iht
+import numpy as np
+import matplotlib.pyplot as plt
+
+import pywt
+import pywt.data
 
 
 class QWTHelper():
@@ -465,11 +470,6 @@ class QWTInverse(nn.Module):
 
 
 
-import numpy as np
-import matplotlib.pyplot as plt
-
-import pywt
-import pywt.data
 
 def main():
     from PIL import Image

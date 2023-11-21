@@ -7,7 +7,7 @@ import pytorch_lightning as pl
 import torch.nn as nn
 from torchmetrics.functional import peak_signal_noise_ratio,structural_similarity_index_measure
 from torch.utils.data import DataLoader
-# from marina_code.get_data import DatasetForCAE_IXI, DatasetKvasir
+# from data import DatasetForCAE_IXI, DatasetKvasir
 import wandb
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
