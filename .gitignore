@@ -4,6 +4,8 @@ src/TarGAN/eval/*
 src/TarGAN/Ground/*
 src/TarGAN/results/*
 src/TarGAN/Segmentation/*
+src/quave/wandb/*
+data/*
 ### Linux ###
 *~
 ### PyCharm ###

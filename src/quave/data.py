@@ -17,6 +17,11 @@ import pywt
 import pywt.data
 from scipy.fftpack import hilbert as ht
 from six.moves import xrange
+from pathlib import Path
+import torch
+import torchvision
+from PIL import Image
+
 # import sys
 # sys.path.append('/home/luigi/Documents/tests/')
 
@@ -167,8 +172,8 @@ class DatasetForCAE_IXI(torch.utils.data.Dataset):
     
         # path = "./IXI_preprocess_dataset"
         
-        path1 = '/home/luigi/Documents/tests/IXI_preprocess_dataset/IXI-T1/T1.npz'#path + "/IXI-T1/T1.npz" 
-        path2 = '/home/luigi/Documents/tests/IXI_preprocess_dataset/IXI-T2/T2.npz'#path + "/IXI-T2/T2.npz"
+        path1 = '../../data/IXI_preprocess_dataset/IXI-T1/T1.npz'#path + "/IXI-T1/T1.npz" 
+        path2 = '../../data/IXI_preprocess_dataset/IXI-T2/T2.npz'#path + "/IXI-T2/T2.npz"
         
         self.images1 = np.load(path1,allow_pickle=True)['arr_0'] # array of uint8 (581, 256,256) valori [0,255]
         self.images2 = np.load(path2,allow_pickle=True)['arr_0'] # array of uint8 (578, 256,256) valori [0,255]
@@ -220,3 +225,29 @@ class DatasetForCAE_IXI(torch.utils.data.Dataset):
 
    
    
+
+class CelebADataset(torch.utils.data.Dataset):
+
+    def __init__(self, path: str, image_size: int):
+
+        super().__init__()
+
+        # Get the paths of all `jpg` files
+        self.paths = [p for p in Path(path).glob(f'**/*.jpg')]
+
+        # Transformation
+        self.transform = torchvision.transforms.Compose([
+            # Resize the image
+            torchvision.transforms.Resize(image_size),
+            # Convert to PyTorch tensor
+            torchvision.transforms.ToTensor(),
+        ])
+
+    def __len__(self):
+        return len(self.paths)
+
+    def __getitem__(self, index):
+        path = self.paths[index]
+        img = Image.open(path)
+        return self.transform(img)
+

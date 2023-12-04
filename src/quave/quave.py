@@ -7,7 +7,7 @@ import pytorch_lightning as pl
 import torch.nn as nn
 from torchmetrics.functional import peak_signal_noise_ratio,structural_similarity_index_measure
 from torch.utils.data import DataLoader
-# from data import DatasetForCAE_IXI, DatasetKvasir
+from data import DatasetForCAE_IXI, DatasetKvasir, CelebADataset
 import wandb
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -199,7 +199,7 @@ class WaveletTransformModule(nn.Module):
         return model_espcn
 
 class IXIDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir: str = './IXI_preprocess_dataset', batch_size: int = 16, seed=888):
+    def __init__(self, data_dir: str = '../../data/IXI_preprocess_dataset', batch_size: int = 16, seed=888):
         super().__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
@@ -230,10 +230,9 @@ class KvasirDataModule(pl.LightningDataModule):
     def val_dataloader(self):
         return DataLoader(self.dataset_valid, batch_size=self.batch_size, shuffle=False, num_workers=4)
 
-#from celeba import CelebADataset
 
 class CelebADataModule(pl.LightningDataModule):
-    def __init__(self, data_dir: str = '/home/luigi/Documents/swagan/datasets/celeba_1024', 
+    def __init__(self, data_dir: str = '../../data/celeba_1024', 
                         batch_size: int = 16, seed=888, image_size=256):
         super().__init__()
         self.data_dir = data_dir
