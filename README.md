@@ -13,11 +13,13 @@ Neural network generalizability is becoming a broad research field due to the in
 #### Cite
 
 ```
-@Article{GrassucciEntropy2021,
-author = {Sigillo, L. and Grassucci, E. and Uncini, A. and Comminiello, D.},
-title = {Generalizing Medical Image Representations via Quaternion Wavelet Networks},
-journal = {ArXiv preprint: arXiv:2310.10224},
-year = {2023},
+@misc{sigillo2024generalizing,
+      title={Generalizing Medical Image Representations via Quaternion Wavelet Networks}, 
+      author={Luigi Sigillo and Eleonora Grassucci and Aurelio Uncini and Danilo Comminiello},
+      year={2024},
+      eprint={2310.10224},
+      archivePrefix={arXiv},
+      primaryClass={eess.IV}
 }
 ```
 
@@ -34,12 +36,14 @@ In recent years, deep learning has permeated the field of medical image analysis
 #### Cite
 
 ```
-@Article{GrassucciEntropy2021,
-author = {Grassucci, E. and Sigillo, L. and Uncini, A. and Comminiello, D.},
-title = {GROUSE: A Task and Model Agnostic Wavelet-Driven Framework for Medical Imaging},
-journal = {IEEE Signal Processing Letters},
-volume = {30},
-year = {2023},
-pages = {1397 - 1401},
-}
+@ARTICLE{grousegrassucci2023,
+  author={Grassucci, Eleonora and Sigillo, Luigi and Uncini, Aurelio and Comminiello, Danilo},
+  journal={IEEE Signal Processing Letters}, 
+  title={GROUSE: A Task and Model Agnostic Wavelet- Driven Framework for Medical Imaging}, 
+  year={2023},
+  volume={30},
+  number={},
+  pages={1397-1401},
+  keywords={Biomedical imaging;Quaternions;Wavelet transforms;Feature extraction;Task analysis;Discrete wavelet transforms;Mutual information;Generalizable deep learning;medical image analysis;mutual information;quaternion wavelet transform},
+  doi={10.1109/LSP.2023.3321554}}
 ```
