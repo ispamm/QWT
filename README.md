@@ -13,13 +13,17 @@ Neural network generalizability is becoming a broad research field due to the in
 #### Cite
 
 ```
-@misc{sigillo2024generalizing,
-      title={Generalizing Medical Image Representations via Quaternion Wavelet Networks}, 
-      author={Luigi Sigillo and Eleonora Grassucci and Aurelio Uncini and Danilo Comminiello},
-      year={2024},
-      eprint={2310.10224},
-      archivePrefix={arXiv},
-      primaryClass={eess.IV}
+@article{SIGILLO2025130195,
+title = {Generalizing medical image representations via quaternion wavelet networks},
+journal = {Neurocomputing},
+volume = {638},
+pages = {130195},
+year = {2025},
+issn = {0925-2312},
+doi = {https://doi.org/10.1016/j.neucom.2025.130195},
+url = {https://www.sciencedirect.com/science/article/pii/S0925231225008677},
+author = {Luigi Sigillo and Eleonora Grassucci and Aurelio Uncini and Danilo Comminiello},
+keywords = {Generalizable neural networks, Quaternion wavelet transform, Task-agnostic deep learning, Quaternion neural networks, Medical imaging},
 }
 ```
 
